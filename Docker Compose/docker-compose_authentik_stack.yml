@@ -34,7 +34,7 @@ services:
     
     command: server
     environment:
-      AUTHENTIK_SECRET_KEY: fYhI1NZz3+JSnLRSBOdSVF+peK+o5Y/tSHUiK7ktZTQ6MmSMp2NrNbXHfYjGhGAn/UyMas/OYC7dLkHyroot@Dockervm2:~#
+      AUTHENTIK_SECRET_KEY: 
       AUTHENTIK_REDIS__HOST: redis
       AUTHENTIK_POSTGRESQL__HOST: postgresql
       AUTHENTIK_POSTGRESQL__USER: admin
