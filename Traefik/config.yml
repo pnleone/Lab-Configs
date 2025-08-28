@@ -1,0 +1,118 @@
+
+entryPoints:
+  web:
+    address: ':80'
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ':443'
+    http:
+      tls:
+        certResolver: letsencrypt
+  traefik:
+    address: ':8080'
+
+certificatesResolvers:
+  stepca:
+    acme:
+      caServer: "https://stepca.home.com/acme/acme-directory"
+      email: "admin@home.com"
+      storage: "acme.json"
+      dnsChallenge:
+        provider: "manual"
+
+api:
+  dashboard: true
+  insecure: true
+
+log:
+  filePath: /var/log/traefik/traefik.log
+  format: json
+  level: INFO
+
+accessLog:
+  filePath: /var/log/traefik/traefik-access.log
+  format: json
+  filters:
+    statusCodes:
+      - "200"
+      - "400-599"
+    retryAttempts: true
+    minDuration: "10ms"
+  bufferingSize: 0
+  fields:
+    headers:
+      defaultMode: drop
+      names:
+        User-Agent: keep
+
+providers:
+   
+  docker:
+    exposedByDefault: false
+  file:
+    filename: /config.yml
+    watch: true
+
+http:
+  routers:
+    vault:
+      rule: "Host(`vault.home.com`)"
+      service: vault
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: stepca
+
+    plex:
+      rule: "Host(`plex.home.com`)"
+      service: plex
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: stepca
+
+    jellyfin:
+      rule: "Host(`jellyfin.home.com`)"
+      service: jellyfin
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: stepca
+
+  services:
+    vault:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.4:8200"
+
+    plex:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.136:32400"
+
+    jellyfin:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.244:8096"
+
+    portainer:
+      image: portainer/portainer-ce
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.portainer.rule=Host(`portainer.home.com`)"
+        - "traefik.http.routers.portainer.entrypoints=websecure"
+        - "traefik.http.routers.portainer.tls.certresolver=stepca"
+        - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
+    tautulli:
+      image: tautulli/tautulli
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.tautulli.rule=Host(`tautulli.home.com`)"
+        - "traefik.http.routers.tautulli.entrypoints=websecure"
+        - "traefik.http.routers.tautulli.tls.certresolver=stepca"
+        - "traefik.http.services.tautulli.loadbalancer.server.port=8181"

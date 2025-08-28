@@ -1,0 +1,28 @@
+---
+- name: Update resolv.conf with new DNS name servers
+  hosts: all
+  gather_facts: yes
+  become: yes
+
+  handlers:
+    - name: Restart systemd-resolved (if needed)
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted
+        enabled: yes
+      when:
+        - ansible_service_mgr == "systemd"
+        - "'systemd-resolved.service' in ansible_facts.services | default({})"
+
+  tasks:
+    - name: Replace /etc/resolv.conf with specified nameservers
+      copy:
+        dest: /etc/resolv.conf
+        content: |
+          nameserver 192.168.1.250
+          nameserver 192.168.1.126
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+      notify: Restart systemd-resolved (if needed)

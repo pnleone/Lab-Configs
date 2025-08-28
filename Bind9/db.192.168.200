@@ -1,0 +1,10 @@
+$TTL    604800
+@       IN      SOA     bind.home.com. pnleone.outlook.com. (
+                      2025072601 ; Serial
+                        604800     ; Refresh
+                         86400     ; Retry
+                       2419200     ; Expire
+                        604800 )   ; Negative Cache TTL
+;
+@       IN      NS      bind.home.com.
+5       IN      PTR     host2.home.com.

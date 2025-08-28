@@ -1,0 +1,27 @@
+---
+- hosts: lxcroot
+  tasks:
+
+  - name: install apache and php packages for all dist
+    tags: apache,httpd,php
+    package:
+      name:
+        - "{{ apache_package }}"
+        - "{{ php_package }}"
+      state: latest
+      update_cache: yes
+
+  - name: start apache
+    tags: apache,httpd
+    service:
+      name: "{{ apache_service  }}"
+      state: started
+      enabled: yes
+    register: apache
+
+  - name: restart apache
+    tags: apache,httpd
+    service:
+      name: "{{ apache_service  }}"
+      state: restarted
+    when: apache.changed

@@ -1,0 +1,21 @@
+tls:
+  certificates:
+    # whoami service cert
+    - certFile: /certs/chained_whoami.crt
+      keyFile:  /certs/whoami.key
+
+    # grafana service cert
+    - certFile: /certs/chained_graf.crt
+      keyFile:  /certs/grafana.key
+
+    # portainer service cert
+    
+    - certFile: /certs/chained_port.crt
+      keyFile: /certs/portainer.key
+
+ 
+    - certFile: /certs/chained_traefik.crt
+      keyFile:  /certs/traefik.key
+
+    - certFile: /certs/chained_vault.crt
+      keyFile: /certs/vault.key

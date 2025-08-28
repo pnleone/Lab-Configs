@@ -1,0 +1,9 @@
+options {
+    directory "/etc/bind";
+    recursion no;
+    allow-query { 192.168.1.250; }; # Allow only Pi-hole to query it
+    listen-on { 192.168.1.251; 127.0.0.1; }; # Listen only on its own IP
+    forwarders {
+    192.168.1.250; # Forward external queries to Pi-hole
+};
+};

@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  tautulli:
+    image: ghcr.io/tautulli/tautulli:latest
+    container_name: tautulli
+    restart: unless-stopped
+    ports:
+      - "8181:8181"
+    volumes:
+      - /opt/tautulli/config:/config
+    environment:
+      - PUID=1000       # Replace with your user ID
+      - PGID=1000       # Replace with your group ID
+      - TZ=America/New_York

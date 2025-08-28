@@ -1,0 +1,42 @@
+$TTL    604800
+@       IN      SOA     bind.leone.home. pnleone.outlook.com. (
+                        2025082401      ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+
+@       IN      NS      bind.leone.home.
+
+251     IN      PTR     bind.leone.home.
+250     IN      PTR     pihole.leone.home.
+252     IN      PTR     unbound.leone.home.
+1       IN      PTR     router.leone.home.
+31      IN      PTR     officepc.leone.home.
+254     IN      PTR     pf.leone.home.
+253     IN      PTR     pfa.leone.home.
+249     IN      PTR     pfb.leone.home.
+202     IN      PTR     win11vm1.leone.home.
+100     IN      PTR     kali.leone.home.
+108     IN      PTR     web.leone.home.
+136     IN      PTR     plex.leone.home.
+244     IN      PTR     jellyfin.leone.home.
+181     IN      PTR     uptimek.leone.home.
+4       IN      PTR     vault.leone.home.
+219     IN      PTR     wazuh.leone.home.
+178     IN      PTR     pve.leone.home.
+126     IN      PTR     portainer.leone.home.
+126     IN      PTR     tautulli.leone.home.
+247     IN      PTR     traefik.leone.home.
+152     IN      PTR     dc01.leone.home.
+202     IN      PTR     win11pro.leone.home.
+182     IN      PTR     win11pro2.leone.home.
+109     IN      PTR     splunk.leone.home.
+25      IN      PTR     ans.leone.home.
+126     IN      PTR     piholebk.leone.home.
+246     IN      PTR     grafana.leone.home.
+126     IN      PTR     prom.leone.home.
+166     IN      PTR     authentik.leone.home.
+5       IN      PTR     ds.leone.home.
+247     IN      PTR     whoami.leone.home.
+239     IN      PTR     pbs.leone.com.

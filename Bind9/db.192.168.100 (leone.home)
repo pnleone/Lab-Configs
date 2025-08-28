@@ -1,0 +1,17 @@
+$TTL    604800
+@       IN      SOA     bind.leone.home. pnleone.outlook.com. (
+                      2025082401   ; Serial
+                        604800     ; Refresh
+                         86400     ; Retry
+                       2419200     ; Expire
+                        604800 )   ; Negative Cache TTL
+;
+@       IN      NS      bind.leone.home.
+1       IN      PTR     fw.leone.home.
+2       IN      PTR     fwa.leone.home.
+3       IN      PTR     fwb.leone.home.
+11      IN      PTR     win11pfs.leone.home.
+4       IN      PTR     host1.leone.home.
+50      IN      PTR     rootca.leone.home.
+51      IN      PTR     stepca.leone.home.
+15      IN      PTR     ovrsr.leone.home.

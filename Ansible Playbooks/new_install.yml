@@ -1,0 +1,174 @@
+---
+-  name: Freah install of Linux VM/LXC, add ansible user and SSH access
+   hosts: all
+   tags: always
+   become: true
+   
+   handlers:
+    - name: Restart systemd-resolved (if needed)
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted
+        enabled: yes
+      when:
+        - ansible_service_mgr == "systemd"
+        - "'systemd-resolved.service' in ansible_facts.services | default({})"
+
+   pre_tasks:
+    
+    - name: install updates (Fedora-Based)
+      tags: always
+      dnf:
+        update_only: yes
+        update_cache: yes
+      changed_when: false  
+      when: ansible_distribution == "CentOS"
+
+    - name: install updates (Debian Based)
+      tags: always
+      apt:
+        upgrade: dist
+        update_cache: yes
+      changed_when: false  
+      when: ansible_distribution in ["Ubuntu", "Debian", "Kali"]
+
+   tasks:
+    - name: add new user
+      become: true
+      tags: always
+      ansible.builtin.user:
+        name: ansible
+        group: root
+        shell: /bin/bash
+        password:  "{{ 'paul1' | password_hash('sha512') }}"
+
+    - name: Ensure OpenSSH server is installed
+      package:
+        name: openssh-server
+        state: present
+
+    - name: Backup existing sshd_config
+      become: true
+      copy:
+        src: /etc/ssh/sshd_config
+        dest: /etc/ssh/sshd_config.bak
+        remote_src: yes
+      when: ansible_facts['os_family'] != 'Windows'
+
+    - name: Set SSH configuration options
+      become: true
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?{{ item.key }}'
+        line: '{{ item.key }} {{ item.value }}'
+        state: present
+        create: yes
+        backup: yes
+      loop:
+        - { key: 'PermitRootLogin', value: 'yes' }
+        - { key: 'PasswordAuthentication', value: 'yes' }
+        - { key: 'PubkeyAuthentication', value: 'yes' }
+        - { key: 'AuthorizedKeysFile', value: '.ssh/authorized_keys' }
+        - { key: 'PermitEmptyPasswords', value: 'no' }
+        - { key: 'ChallengeResponseAuthentication', value: 'no' }
+        - { key: 'UsePAM', value: 'yes' }
+
+    - name: Ensure SSH service is enabled and restarted
+      become: true
+      service:
+        name: "{{ item  }}"
+        state: restarted
+        enabled: yes
+      loop:
+        - ssh
+        - sshd
+
+
+    - name: Ensure .ssh directory exists for ansible user
+      become: true
+      file:
+        path: /home/ansible/.ssh
+        state: directory
+        owner: ansible
+        group: root
+        mode: '0700'
+
+    - name: add SSH key for ansible host
+      become: true
+      tags: always
+      ansible.posix.authorized_key:
+        user: ansible
+        key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM6pV5iqOKDFRfFzNQ+OSXIPYJ1wmsywJhJOJ/wcxZQ1 root@ansible"
+        state: present
+
+    - name: Ensure sudo is installed
+      package:
+        name: sudo
+        state: present
+
+    - name: Ensure /etc/sudoers.d exists
+      become: true
+      file:
+        path: /etc/sudoers.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0750'
+
+    - name: add sudoers file to ansible
+      become: true
+      ansible.builtin.copy:
+        src: sudoer_ansible
+        dest: /etc/sudoers.d/ansible
+        owner: root
+        group: root
+        mode: '0440'
+        validate: '/usr/sbin/visudo -cf %s'
+      
+    - name: Replace /etc/resolv.conf with specified nameservers
+      copy:
+        dest: /etc/resolv.conf
+        content: |
+          nameserver 192.168.1.250
+          nameserver 192.168.1.126
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+      notify: Restart systemd-resolved (if needed)
+
+  
+-  name: add a new user and enable remote access via SSH
+   hosts: all
+   become: true
+
+   handlers:
+    - name: Restart systemd-resolved (if needed)
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted
+        enabled: yes
+      when:
+        - ansible_service_mgr == "systemd"
+        - "'systemd-resolved.service' in ansible_facts.services | default({})"
+
+
+
+    - name: install updates (Fedora-Based)
+      tags: always
+      dnf:
+        update_only: yes
+        update_cache: yes
+      changed_when: false
+      when: ansible_distribution == "CentOS"
+
+    - name: install updates (Debian Based)
+      tags: always
+      apt:
+        upgrade: dist
+        update_cache: yes
+      changed_when: false
+      when: ansible_distribution in ["Ubuntu", "Debian", "Kali"]
+
+   tasks:
+   
