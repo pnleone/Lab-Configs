@@ -8,8 +8,8 @@ terraform {
 
 provider "proxmox" {
     pm_api_url          = "https://pve.home.com:8006/api2/json"
-    pm_api_token_id     = ""
-    pm_api_token_secret = ""
+    pm_api_token_id     = var.pm_api_token_id
+    pm_api_token_secret = var.pm_api_token_secret
     pm_tls_insecure     = false
 }
 
@@ -23,6 +23,9 @@ resource "proxmox_vm_qemu" "ubuntu-terratest" {
     sockets             = 1
     onboot              = true
     agent               = 1
+    # Cloud-init settings
+    ciuser     = var.ciuser
+    cipassword = var.cipassword
     
     disk {
         size            = "32G"
