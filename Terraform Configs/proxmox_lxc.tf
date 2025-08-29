@@ -21,6 +21,18 @@ variable "rootpassword" {
   type        = string
   sensitive   = true
 }
+variable "lxc_name" {
+  description = "Hostname of the LXC container"
+  type        = string
+  default     = "debian-lxc"
+
+}
+
+variable "lxc_id" {
+  description = "VMID for the LXC container"
+  type        = number
+}
+
 
 provider "proxmox" {
     pm_api_url          = "https://pve.home.com:8006/api2/json"
@@ -30,9 +42,9 @@ provider "proxmox" {
 }
 
 resource "proxmox_lxc" "testct" {
-  hostname     = "tf-demo-ct"
+  hostname     = var.lxc_name
   target_node  = "pve"
-  vmid         = 223
+  vmid         = var.lxc_id
   ostemplate   = "Media4TBnvme:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"
   password     = var.rootpassword
   unprivileged = true

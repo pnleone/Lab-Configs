@@ -34,8 +34,8 @@ provider "proxmox" {
     pm_tls_insecure     = false
 }
 
-resource "proxmox_vm_qemu" "ubuntu-terratest" {
-    name                = "ubuntu-terratest"
+resource "proxmox_vm_qemu" "ubuntu-vm" {
+    name                = "ubuntu-vm"
     target_node         = "pve"
     clone               = "ubuntu-cloud"
     full_clone          = true
