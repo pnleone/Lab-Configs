@@ -18,12 +18,14 @@ resource "proxmox_lxc" "testct" {
   hostname     = "tf-demo-ct"
   target_node  = "pve"
   ostemplate   = "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
-  password     = "changeme"
+  password     = var.rootpassword
+  unprivileged = true
   cores        = 2
-  memory       = 1024
+  memory       = 512
   swap         = 512
   onboot       = true
   start        = true
+
 
   rootfs {
     storage = "local-lvm"

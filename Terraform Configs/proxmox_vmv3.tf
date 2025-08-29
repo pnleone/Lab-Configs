@@ -25,6 +25,10 @@ resource "proxmox_vm_qemu" "ubuntu-terratest" {
     onboot              = true
     agent               = 1
 
+    # Cloud-init settings
+    ciuser     = var.ciuser
+    cipassword = var.cipassword
+     
     disk {
         size            = "32G"
         type            = "scsi"
