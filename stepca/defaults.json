@@ -1,6 +1,0 @@
-{
-  "ca-url": "https://stepca.home.com",
-  "fingerprint": "1a8504f5873cf9efd2016c0079b615d813ce54b9fb7f60ea7130cbb618a10243",
-  "root": "/root/.step/certs/root_ca.crt",
-  "redirect-url": ""
-}
