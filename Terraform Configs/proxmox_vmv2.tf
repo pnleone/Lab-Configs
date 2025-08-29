@@ -2,8 +2,29 @@ terraform {
     required_providers {
         proxmox = {
             source = "telmate/proxmox"
+            version = ">= 3.0.1" 
         }
     }
+}
+variable "pm_api_token_id" {
+  description = "Proxmox API token ID"
+  type        = string
+}
+
+variable "pm_api_token_secret" {
+  description = "Proxmox API token secret"
+  type        = string
+  sensitive   = true
+}
+variable "ciuser" {
+  description = "Cloud-init username for this VM"
+  type        = string
+}
+
+variable "cipassword" {
+  description = "Cloud-init password for this VM"
+  type        = string
+  sensitive   = true
 }
 
 provider "proxmox" {
@@ -26,7 +47,7 @@ resource "proxmox_vm_qemu" "ubuntu-terratest" {
     # Cloud-init settings
     ciuser     = var.ciuser
     cipassword = var.cipassword
-    
+
     disk {
         size            = "32G"
         type            = "scsi"
