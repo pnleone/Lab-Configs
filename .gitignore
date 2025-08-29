@@ -1,0 +1,5 @@
+dist/
+.env
+stepca/defaults.json
+Docker Compose/docker-compose_authentik_stack.yml
+stepca/ca.json
