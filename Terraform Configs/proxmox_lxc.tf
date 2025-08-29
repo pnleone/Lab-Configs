@@ -9,8 +9,8 @@ terraform {
 
 provider "proxmox" {
   pm_api_url            = "https://pve.home.com:8006/api2/json"
-  pm_api_token_id       = "terraform@pam!terraform"
-  pm_api_token_secret   = "733fd8be-7e7e-4cfd-b8fb-fe178326b4f6"
+  pm_api_token_id       = ""
+  pm_api_token_secret   = ""
   pm_tls_insecure       = false  # true only for self-signed lab certs
 }
 
