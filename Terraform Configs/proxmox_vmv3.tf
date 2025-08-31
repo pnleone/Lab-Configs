@@ -61,7 +61,6 @@ resource "proxmox_vm_qemu" "ubuntu-vm" {
     agent               = 1
     os_type             = "l26"
     clone_wait          = 0
-    # Cloud-init settings
     ciuser     = var.ciuser
     cipassword = var.cipassword
 

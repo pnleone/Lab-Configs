@@ -4,3 +4,4 @@ stepca/defaults.json
 Docker Compose/docker-compose_authentik_stack.yml
 stepca/ca.json
 Terraform Configs/terraform.tfvars
+Traefik/test.yml
