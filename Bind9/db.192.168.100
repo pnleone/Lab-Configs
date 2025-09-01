@@ -1,6 +1,7 @@
 $TTL    604800
+$ORIGIN 100.168.192.IN-ADDR.ARPA.
 @       IN      SOA     bind.home.com. pnleone.outlook.com. (
-                      2025080101   ; Serial
+                      2025083105   ; Serial
                         604800     ; Refresh
                          86400     ; Retry
                        2419200     ; Expire
