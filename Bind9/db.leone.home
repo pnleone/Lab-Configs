@@ -1,14 +1,14 @@
 $TTL    604800
 $ORIGIN leone.home.
-@       IN      SOA     bind.home.com. pnleone.outlook.com. (
-                         2025083119     ; Serial
+@       IN      SOA     bind.leone.home. pnleone.outlook.com. (
+                         2025090201     ; Serial
                          604800         ; Refresh
                           86400         ; Retry
                         2419200         ; Expire
                          604800 )       ; Negative Cache TTL
 
-@       IN      NS      bind.home.com.
-;bind    IN      A       192.168.1.251
+@       IN      NS      bind.leone.home.
+bind    IN      A       192.168.1.251
 
 ; Hosts in 192.168.1.0/24 subnet
 ;pihole  IN      A       192.168.1.250
@@ -41,8 +41,8 @@ $ORIGIN leone.home.
 ;authentik IN    A       192.168.1.166
 ;ds      IN      A       192.168.1.5
 ;whoami  IN      A       192.168.1.247
-pbs      IN       A       192.168.1.239
-pulse    IN       A       192.168.1.247
+;pbs      IN       A       192.168.1.239
+;pulse    IN       A       192.168.1.247
 
 ; Hosts in 192.168.100.0/24 subnet
 ;fw      IN      A       192.168.100.1

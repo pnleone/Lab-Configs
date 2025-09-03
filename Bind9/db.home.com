@@ -1,7 +1,7 @@
 $TTL    86400
 $ORIGIN home.com.
 @       IN      SOA     bind.home.com. pnleone.outlook.com. (
-                         2025090101     ; Serial
+                         2025090201     ; Serial
                          604800         ; Refresh
                           86400         ; Retry
                         2419200         ; Expire
