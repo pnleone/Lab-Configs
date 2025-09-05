@@ -61,12 +61,3 @@ ovrsr   IN      A       192.168.100.15
 ; Hosts in 192.168.200.0/24 subnet
 host2   IN      A       192.168.200.5
 
-;dc._msdcs.home.com. IN NS      dc01.home.com.
-; Required SRV Records for AD
-;$ORIGIN home.com.
-;_kerberos._tcp IN SRV 0 100 88  dc01.home.com.
-;_kerberos._udp IN SRV 0 100 88  dc01.home.com.
-;_ldap._tcp     IN SRV 0 100 389 dc01.home.com.
-
-; Optional: Global Catalog
-;_gc._tcp       IN SRV 0 100 3268 dc01.home.com.
