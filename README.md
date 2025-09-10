@@ -2,19 +2,24 @@ Purpose
 
 This lab environment has been deliberately designed as both a technical proving ground and a personal growth accelerator. Its primary purpose is to deepen my expertise across several interrelated domains that are critical to modern enterprise IT operations:
 
-  •	Secure network infrastructure — designing, segmenting, and defending multizone networks with layered controls.
-  •	Virtualization and containerization — orchestrating workloads across hypervisors and container platforms.
-  •	Linux and Windows server deployment and administration — building, hardening, and maintaining heterogeneous systems in a unified operational model.
-  •	Enterprise grade application hosting — deploying, integrating, and securing the same classes of tools and services found in production corporate environments.
+   •	Secure network infrastructure — designing, segmenting, and defending multizone networks with layered controls.
+    
+   •	Virtualization and containerization — orchestrating workloads across hypervisors and container platforms.
+    
+   •	Linux and Windows server deployment and administration — building, hardening, and maintaining heterogeneous systems in a unified operational model.
+    
+   •	Enterprise grade application hosting — deploying, integrating, and securing the same classes of tools and services found in production corporate environments.
 
 This solution overview captures the current state of that environment, detailing the key technologies deployed and the security measures implemented.
 
 The accompanying Security Hardening Checklist provides a structured view of the controls in place to ensure confidentiality, integrity, availability, and operational resilience.
 The lab is built on the following guiding principles:
 
-  •	Defense in Depth — multiple, complementary layers of security to reduce the likelihood and impact of compromise.
-  •	Secure by Design — embedding security considerations into every architectural and configuration decision.
-  •	Zero Trust — verifying every request, enforcing least privilege access, and minimizing implicit trust between systems.
+   •	Defense in Depth — multiple, complementary layers of security to reduce the likelihood and impact of compromise.
+    
+   •	Secure by Design — embedding security considerations into every architectural and configuration decision.
+    
+   •	Zero Trust — verifying every request, enforcing least privilege access, and minimizing implicit trust between systems.
 
 By applying these principles consistently, I’ve strengthened not only the technical posture of the lab but also my own capabilities in architecting, securing, and operating complex systems.
 
