@@ -1,7 +1,7 @@
 $TTL    86400
 $ORIGIN home.com.
 @       IN      SOA     bind.home.com. pnleone.outlook.com. (
-                         2025090201     ; Serial
+                         2025091001     ; Serial
                          604800         ; Refresh
                           86400         ; Retry
                         2419200         ; Expire
@@ -46,7 +46,7 @@ chk-svr IN      A       192.168.1.247
 vas     IN      A       192.168.1.247
 pbs     IN      A       192.168.1.239
 pulse   IN      A       192.168.1.247
-
+opn     IN      A       192.168.1.201
 
 ; Hosts in 192.168.100.0/24 subnet
 fw      IN      A       192.168.100.1
