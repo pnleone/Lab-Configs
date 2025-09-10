@@ -145,11 +145,13 @@ A comprehensive summary of hardening measures implemented across the lab environ
     •	John the Ripper – Password hash cracking for audit and recovery testing.
     •	Gobuster – Directory and DNS enumeration to uncover hidden endpoints.
     •	SQLMap – Automated SQL injection testing for web applications.
+    
   🌐 Network Observability & Packet Analysis
     •	Wireshark – Deep packet inspection for protocol analysis, handshake validation, and anomaly detection.
     •	Brim – Timeline-based network event analysis using Zeek logs and PCAPs.
     •	tcpdump – CLI-based packet capture for lightweight diagnostics and scripting.
     •	NetworkMiner – Passive network forensics tool for extracting metadata, files, and credentials from PCAPs.
+    
   🧬 Digital Forensics & Incident Response
     •	Eric Zimmerman Tools – Specialized utilities for registry, event log, and artifact parsing (e.g., Registry Explorer, Timeline Explorer).
     •	KAPE (Kroll Artifact Parser and Extractor) – Rapid triage and artifact collection across endpoints.
