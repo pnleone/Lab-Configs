@@ -6,6 +6,7 @@ This lab environment has been deliberately designed as both a technical proving 
   •	Virtualization and containerization — orchestrating workloads across hypervisors and container platforms.
   •	Linux and Windows server deployment and administration — building, hardening, and maintaining heterogeneous systems in a unified operational model.
   •	Enterprise grade application hosting — deploying, integrating, and securing the same classes of tools and services found in production corporate environments.
+
 This solution overview captures the current state of that environment, detailing the key technologies deployed and the security measures implemented.
 
 The accompanying Security Hardening Checklist provides a structured view of the controls in place to ensure confidentiality, integrity, availability, and operational resilience.
