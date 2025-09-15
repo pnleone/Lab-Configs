@@ -1,0 +1,57 @@
+groups:
+- name: endpoint-reachability
+  rules:
+
+  - alert: PfSenseNodeDown
+    expr: up{job="pfsense-node", instance="192.168.100.2:9100"} == 0
+    for: 30s
+    labels:
+      severity: critical
+    annotations:
+      summary: "pfSense node is unreachable"
+      description: "pfSense A has been down for 30 seconds."
+
+  - alert: PiHoleDown
+    expr: up{job="pihole", instance="192.168.1.250:9617"} == 0
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Pi-hole exporter is unreachable"
+      description: "Pihole@192.168.1.250 has been down for 2 minutes."
+
+  - alert: PrometheusSelfDown
+    expr: up{job="prometheus", instance="localhost:9090"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Prometheus is unreachable"
+      description: "Prometheus at localhost:9090 is not responding to scrapes."
+
+  - alert: PVEExporterDown
+    expr: up{job="pve", instance="192.168.1.178"} == 0
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Proxmox exporter is unreachable"
+      description: "Proxmox has been down for 2 minutes."
+
+  - alert: TraefikExporterDown
+    expr: up{job="traefik", instance="192.168.1.247:8080"} == 0
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Traefik metrics endpoint is unreachable"
+      description: "Traefik has been down for 2 minutes."
+
+  - alert: UptimeKumaExporterDown
+    expr: up{job="uptime-kuma", instance="uptimek.home.com:3001"} == 0
+    for: 30s
+    labels:
+      severity: warning
+    annotations:
+      summary: "Uptime Kuma exporter is unreachable"
+      description: "Uptime Kuma has been down for 30 seconds."

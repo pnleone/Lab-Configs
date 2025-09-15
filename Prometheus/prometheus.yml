@@ -1,0 +1,103 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  - job_name: 'pve'
+    static_configs:
+      - targets:
+        - 192.168.1.178
+    metrics_path: /pve
+    params:
+      module: [default]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: pve-exporter:9221
+
+
+  - job_name: 'pihole'
+    static_configs:
+      - targets: ['192.168.1.250:9617']
+
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['192.168.1.247:8080']
+
+  - job_name: 'pfsense-node'
+    static_configs:
+      - targets: ['192.168.100.2:9100']  # pfSense LAN IP
+
+
+  - job_name: 'uptime-kuma'
+    scrape_interval: 10s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['uptimek.home.com:3001']
+    scheme: http
+    basic_auth:
+      username: uptimekuma
+      password: xxxxx #removed 
+
+  - job_name: 'blackbox_http'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://trfk.home.com
+          - https://web.home.com
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  - job_name: 'discord_webhook'
+    scrape_interval: 1h
+    metrics_path: /probe
+    params:
+      module: [discord_webhook]
+    static_configs:
+      - targets:
+          - https://discord.com/api/webhooks/xxxx #removed 
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  - job_name: 'wildcard_dns'
+    metrics_path: /probe
+    params:
+      module: [wildcard_dns]
+    static_configs:
+      - targets:
+          - web.home.com
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'  # or your Alertmanager IPy
+
+rule_files:
+  - "rules/endpoint_reachability.yml"
+  - "rules/blackbox_alerts.yml"

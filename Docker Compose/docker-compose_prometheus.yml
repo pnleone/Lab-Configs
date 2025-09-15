@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: bitnami/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - prometheus_data:/bitnami/prometheus
+      - /opt/prometheus/config/prometheus.yml:/opt/prometheus/config/prometheus.yml:ro
+      - /opt/prometheus/config/rules:/opt/prometheus/config/rules
+    ports:
+      - "9090:9090"
+    environment:
+      - TZ=America/New_York
+      - BITNAMI_DEBUG=true
+    restart: unless-stopped
+    networks:
+      - monitoring-net
+      
+    command:
+      - '--config.file=/opt/prometheus/config/prometheus.yml'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - alertmanager
+    
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - /opt/prometheus/config/alertmanager.yml:/opt/prometheus/config/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+   
+    command:
+      - '--config.file=/opt/prometheus/config/alertmanager.yml'
+    restart: unless-stopped
+    networks:
+      - monitoring-net
+  blackbox:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox
+    dns:
+      - 192.168.1.250
+    ports:
+      - "9115:9115"
+    networks:
+      - monitoring-net
+    volumes:
+    - type: bind
+      source: /opt/prometheus/config/blackbox.yml
+      target: /etc/blackbox_exporter/config.yml
+
+    command:
+      - '--config.file=/etc/blackbox_exporter/config.yml'
+    restart: unless-stopped
+   
+      
+volumes:
+  prometheus_data: 
+
+networks:
+  monitoring-net:
+    driver: bridge
+ 
+      
