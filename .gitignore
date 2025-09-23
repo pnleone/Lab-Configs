@@ -6,3 +6,5 @@ stepca/ca.json
 Terraform Configs/terraform.tfvars
 Traefik/test.yml
 stepca/test.json
+.vscode/settings.json
+Traefik/test.json
