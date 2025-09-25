@@ -1,0 +1,128 @@
+{
+  "version": "4.5",
+  "name": "Ivanti Exploitation – CVE-2025-22457, CVE-2023-46805, CVE-2024-21887",
+  "description": "Mapped kill chain and extended behaviors for UNC5221 exploitation of Ivanti Connect Secure, Policy Secure, and ZTA Gateways. Includes TRAILBLAZE dropper, BRUSHFIRE backdoor, and SPAWN ecosystem.",
+  "domain": "enterprise-attack",
+  "techniques": [
+    {
+      "techniqueID": "T1190",
+      "score": 10,
+      "comment": "Initial access via public-facing Ivanti VPN endpoints using buffer overflow and command injection."
+    },
+    {
+      "techniqueID": "T1059.004",
+      "score": 9,
+      "comment": "Command injection via login.cgi to launch TRAILBLAZE dropper and execute shell payloads."
+    },
+    {
+      "techniqueID": "T1505.003",
+      "score": 8,
+      "comment": "Persistence via webshell and passive implant in /home/bin/web (BRUSHFIRE)."
+    },
+    {
+      "techniqueID": "T1562.001",
+      "score": 7,
+      "comment": "Tampering with Ivanti integrity checker tool (ICT) to evade detection."
+    },
+    {
+      "techniqueID": "T1071.001",
+      "score": 6,
+      "comment": "C2 via HTTP/S beaconing from BRUSHFIRE backdoor."
+    },
+    {
+      "techniqueID": "T1003",
+      "score": 6,
+      "comment": "Credential access through harvested VPN session tokens and memory scraping."
+    },
+    {
+      "techniqueID": "T1041",
+      "score": 5,
+      "comment": "Data exfiltration over encrypted channels post-compromise."
+    },
+    {
+      "techniqueID": "T1021.002",
+      "score": 5,
+      "comment": "Lateral movement via SSH and remote services using SPAWN toolkit."
+    },
+    {
+      "techniqueID": "T1027.002",
+      "score": 7,
+      "comment": "TRAILBLAZE is packed and Base64-encoded to fit within shell scripts."
+    },
+    {
+      "techniqueID": "T1036",
+      "score": 8,
+      "comment": "BRUSHFIRE masquerades as a legitimate SSL_read hook inside Ivanti VPN process."
+    },
+    {
+      "techniqueID": "T1222",
+      "score": 6,
+      "comment": "Implants modify permissions on /home/bin/web for persistence."
+    },
+    {
+      "techniqueID": "T1016",
+      "score": 5,
+      "comment": "SPAWN tools perform network recon for lateral movement."
+    },
+    {
+      "techniqueID": "T1033",
+      "score": 5,
+      "comment": "Used to identify privileged accounts post-access."
+    },
+    {
+      "techniqueID": "T1057",
+      "score": 6,
+      "comment": "TRAILBLAZE targets running processes for injection."
+    },
+    {
+      "techniqueID": "T1082",
+      "score": 5,
+      "comment": "Recon includes OS fingerprinting and system profiling."
+    },
+    {
+      "techniqueID": "T1083",
+      "score": 5,
+      "comment": "SPAWN tools enumerate file paths for implant placement."
+    },
+    {
+      "techniqueID": "T1518.001",
+      "score": 7,
+      "comment": "SPAWNSLOTH disables dslogserver and remote syslog forwarding."
+    },
+    {
+      "techniqueID": "T1047",
+      "score": 6,
+      "comment": "Used in lateral movement and remote command execution in hybrid environments."
+    }
+  ],
+  "gradient": {
+    "colors": ["#ffffff", "#ff6666"],
+    "minValue": 0,
+    "maxValue": 10
+  },
+  "legendItems": [
+    {
+      "label": "Ivanti Exploitation Path",
+      "color": "#ff6666"
+    }
+  ],
+  "metadata": [
+    {
+      "name": "CVE References",
+      "value": "CVE-2025-22457, CVE-2023-46805, CVE-2024-21887"
+    },
+    {
+      "name": "Actor",
+      "value": "UNC5221"
+    },
+    {
+      "name": "Malware",
+      "value": "TRAILBLAZE, BRUSHFIRE, SPAWN ecosystem"
+    }
+  ],
+  "filters": {
+    "stages": ["act"],
+    "platforms": ["Linux", "Windows", "Network"]
+  },
+  "sorting": 1
+}
