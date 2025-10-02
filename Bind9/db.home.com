@@ -48,6 +48,7 @@ pbs     IN      A       192.168.1.239
 pulse   IN      A       192.168.1.247
 opn     IN      A       192.168.1.201
 n8n     IN      A       192.168.1.247
+checkmk IN      A       192.168.1.247
 
 ; Hosts in 192.168.100.0/24 subnet
 fw      IN      A       192.168.100.1
