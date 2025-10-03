@@ -16,21 +16,19 @@
 
    pre_tasks:
     
-    - name: install updates (Fedora-Based)
-      tags: always
+    - name: Update all packages on RedHat family
       dnf:
-        update_only: yes
+        name: "*"
+        state: latest
         update_cache: yes
-      changed_when: false  
-      when: ansible_distribution == "CentOS"
+      when: ansible_os_family == "RedHat"
 
-    - name: install updates (Debian Based)
-      tags: always
+    - name: Update all packages on Debian family
       apt:
         upgrade: dist
         update_cache: yes
-      changed_when: false  
-      when: ansible_distribution in ["Ubuntu", "Debian", "Kali"]
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
 
    tasks:
     - name: add new user
@@ -153,22 +151,26 @@
         - "'systemd-resolved.service' in ansible_facts.services | default({})"
 
 
+    # Debian reboot check
+    - name: Check if reboot is required (Debian/Ubuntu)
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_required
+      when: ansible_os_family == "Debian"
 
-    - name: install updates (Fedora-Based)
-      tags: always
-      dnf:
-        update_only: yes
-        update_cache: yes
+    # RedHat reboot check
+    - name: Check if reboot is required (RedHat family)
+      command: needs-restarting -r
+      register: needs_reboot
+      failed_when: false
       changed_when: false
-      when: ansible_distribution == "CentOS"
+      when: ansible_os_family == "RedHat"
 
-    - name: install updates (Debian Based)
-      tags: always
-      apt:
-        upgrade: dist
-        update_cache: yes
-      changed_when: false
-      when: ansible_distribution in ["Ubuntu", "Debian", "Kali"]
+    - name: Reboot if required (Debian)
+      reboot:
+      when: reboot_required.stat.exists
 
-   tasks:
+    - name: Reboot if required (RedHat)
+      reboot:
+      when: needs_reboot.rc == 1
    
