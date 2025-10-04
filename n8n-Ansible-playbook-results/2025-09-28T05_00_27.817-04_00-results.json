@@ -1,0 +1,560 @@
+PLAY [Audit system info] *******************************************************
+
+TASK [Gathering Facts] *********************************************************
+[ERROR]: Task failed: Using a SSH password instead of a key is not possible because Host Key checking is enabled. Please add this host's fingerprint to your known_hosts file to manage this host.
+fatal: [plex.home.com]: FAILED! => {"changed": false, "msg": "Task failed: Using a SSH password instead of a key is not possible because Host Key checking is enabled. Please add this host's fingerprint to your known_hosts file to manage this host."}
+fatal: [pihole.home.com]: FAILED! => {"changed": false, "msg": "Task failed: Using a SSH password instead of a key is not possible because Host Key checking is enabled. Please add this host's fingerprint to your known_hosts file to manage this host."}
+fatal: [splunk.home.com]: FAILED! => {"changed": false, "msg": "Task failed: Using a SSH password instead of a key is not possible because Host Key checking is enabled. Please add this host's fingerprint to your known_hosts file to manage this host."}
+fatal: [jellyfin.home.com]: FAILED! => {"changed": false, "msg": "Task failed: Using a SSH password instead of a key is not possible because Host Key checking is enabled. Please add this host's fingerprint to your known_hosts file to manage this host."}
+ok: [stepca.home.com]
+ok: [web.home.com]
+ok: [bind.home.com]
+[ERROR]: Task failed: Failed to connect to the host via ssh: ssh: Could not resolve hostname vault-home.com: Name or service not known
+fatal: [vault-home.com]: UNREACHABLE! => {"changed": false, "msg": "Task failed: Failed to connect to the host via ssh: ssh: Could not resolve hostname vault-home.com: Name or service not known", "unreachable": true}
+[ERROR]: Task failed: Failed to connect to the host via ssh: ssh: Could not resolve hostname traefik.home.com: Name or service not known
+fatal: [traefik.home.com]: UNREACHABLE! => {"changed": false, "msg": "Task failed: Failed to connect to the host via ssh: ssh: Could not resolve hostname traefik.home.com: Name or service not known", "unreachable": true}
+ok: [ansible]
+ok: [unbound.home.com]
+ok: [uptimek.home.com]
+ok: [wazuh.home.com]
+ok: [ovrsr.home.com]
+[ERROR]: Task failed: Failed to connect to the host via ssh: ssh: connect to host kali.home.com port 22: No route to host
+fatal: [kali.home.com]: UNREACHABLE! => {"changed": false, "msg": "Task failed: Failed to connect to the host via ssh: ssh: connect to host kali.home.com port 22: No route to host", "unreachable": true}
+[ERROR]: Task failed: Failed to connect to the host via ssh: ssh: connect to host 192.168.1.100 port 22: No route to host
+fatal: [192.168.1.100]: UNREACHABLE! => {"changed": false, "msg": "Task failed: Failed to connect to the host via ssh: ssh: connect to host 192.168.1.100 port 22: No route to host", "unreachable": true}
+
+TASK [Check storage space] *****************************************************
+changed: [stepca.home.com]
+changed: [web.home.com]
+changed: [unbound.home.com]
+changed: [bind.home.com]
+changed: [ansible]
+changed: [wazuh.home.com]
+changed: [uptimek.home.com]
+changed: [ovrsr.home.com]
+
+TASK [Show disk usage] *********************************************************
+ok: [ansible] => {
+    "disk_usage.stdout_lines": [
+        "Filesystem      Size  Used Avail Use% Mounted on",
+        "/dev/loop3      7.8G  1.9G  5.6G  25% /",
+        "none            492K  4.0K  488K   1% /dev",
+        "udev             47G     0   47G   0% /dev/tty",
+        "tmpfs            47G  132K   47G   1% /dev/shm",
+        "tmpfs            19G  128K   19G   1% /run",
+        "tmpfs           5.0M     0  5.0M   0% /run/lock"
+    ]
+}
+ok: [bind.home.com] => {
+    "disk_usage.stdout_lines": [
+        "Filesystem      Size  Used Avail Use% Mounted on",
+        "/dev/loop1      7.8G  1.1G  6.3G  15% /",
+        "none            492K  4.0K  488K   1% /dev",
+        "efivarfs        192K  180K  7.6K  96% /sys/firmware/efi/efivars",
+        "tmpfs            47G     0   47G   0% /dev/shm",
+        "tmpfs            19G  136K   19G   1% /run",
+        "tmpfs           5.0M     0  5.0M   0% /run/lock",
+        "tmpfs            47G  124K   47G   1% /tmp",
+        "tmpfs           9.4G  8.0K  9.4G   1% /run/user/0"
+    ]
+}
+ok: [web.home.com] => {
+    "disk_usage.stdout_lines": [
+        "Filesystem                        Size  Used Avail Use% Mounted on",
+        "/dev/mapper/pve-vm--200--disk--0   16G  2.3G   13G  16% /",
+        "none                              492K  4.0K  488K   1% /dev",
+        "efivarfs                          192K  180K  7.6K  96% /sys/firmware/efi/efivars",
+        "tmpfs                              47G     0   47G   0% /dev/shm",
+        "tmpfs                              19G  128K   19G   1% /run",
+        "tmpfs                             5.0M     0  5.0M   0% /run/lock",
+        "tmpfs                              47G  124K   47G   1% /tmp",
+        "tmpfs                             9.4G  8.0K  9.4G   1% /run/user/0"
+    ]
+}
+ok: [stepca.home.com] => {
+    "disk_usage.stdout_lines": [
+        "Filesystem                        Size  Used Avail Use% Mounted on",
+        "/dev/mapper/pve-vm--215--disk--0   32G  1.4G   29G   5% /",
+        "none                              492K  4.0K  488K   1% /dev",
+        "udev                               47G     0   47G   0% /dev/tty",
+        "tmpfs                              47G     0   47G   0% /dev/shm",
+        "tmpfs                              19G  124K   19G   1% /run",
+        "tmpfs                             5.0M     0  5.0M   0% /run/lock",
+        "tmpfs                             9.4G     0  9.4G   0% /run/user/0"
+    ]
+}
+ok: [unbound.home.com] => {
+    "disk_usage.stdout_lines": [
+        "Filesystem                        Size  Used Avail Use% Mounted on",
+        "/dev/mapper/pve-vm--206--disk--0   32G  1.1G   29G   4% /",
+        "none                              492K  4.0K  488K   1% /dev",
+        "efivarfs                          192K  180K  7.6K  96% /sys/firmware/efi/efivars",
+        "tmpfs                              47G     0   47G   0% /dev/shm",
+        "tmpfs                              19G   96K   19G   1% /run",
+        "tmpfs                             5.0M     0  5.0M   0% /run/lock",
+        "tmpfs                             9.4G     0  9.4G   0% /run/user/0"
+    ]
+}
+ok: [uptimek.home.com] => {
+    "disk_usage.stdout_lines": [
+        "Filesystem                        Size  Used Avail Use% Mounted on",
+        "/dev/mapper/pve-vm--209--disk--0  3.9G  1.9G  1.9G  50% /",
+        "none                              492K  4.0K  488K   1% /dev",
+        "udev                               47G     0   47G   0% /dev/tty",
+        "tmpfs                              47G     0   47G   0% /dev/shm",
+        "tmpfs                              19G   92K   19G   1% /run",
+        "tmpfs                             5.0M     0  5.0M   0% /run/lock",
+        "tmpfs                             9.4G     0  9.4G   0% /run/user/0"
+    ]
+}
+ok: [wazuh.home.com] => {
+    "disk_usage.stdout_lines": [
+        "Filesystem                        Size  Used Avail Use% Mounted on",
+        "/dev/mapper/pve-vm--214--disk--1  116G   16G   95G  14% /",
+        "none                              492K  4.0K  488K   1% /dev",
+        "udev                               47G     0   47G   0% /dev/tty",
+        "tmpfs                              47G   80K   47G   1% /dev/shm",
+        "tmpfs                              19G  112K   19G   1% /run",
+        "tmpfs                             5.0M     0  5.0M   0% /run/lock",
+        "tmpfs                             9.4G     0  9.4G   0% /run/user/0"
+    ]
+}
+ok: [ovrsr.home.com] => {
+    "disk_usage.stdout_lines": [
+        "Filesystem                Size  Used Avail Use% Mounted on",
+        "/dev/loop2                 50G   13G   35G  28% /",
+        "none                      492K  4.0K  488K   1% /dev",
+        "tmpfs                      47G     0   47G   0% /dev/shm",
+        "tmpfs                      19G  288K   19G   1% /run",
+        "tmpfs                     5.0M     0  5.0M   0% /run/lock",
+        "overlay                    50G   13G   35G  28% /var/lib/docker/overlay2/829ae28c19791ec61d1f7802c24e7589218712c6a71a2f7fee60a954dc1c59ff/merged",
+        "overlay                    50G   13G   35G  28% /var/lib/docker/overlay2/a67489493d9ef9a1488fb7c6e752d3018f67b174b403a9604fa68975c4ea75ee/merged",
+        "//192.168.1.31/Downloads  1.9T  1.1T  750G  60% /volume1/docker/qbittorrent-vue/downloads",
+        "tmpfs                     9.4G     0  9.4G   0% /run/user/0"
+    ]
+}
+
+TASK [Get IP address info] *****************************************************
+changed: [bind.home.com]
+changed: [web.home.com]
+changed: [stepca.home.com]
+changed: [unbound.home.com]
+changed: [ansible]
+changed: [wazuh.home.com]
+changed: [uptimek.home.com]
+changed: [ovrsr.home.com]
+
+TASK [Show IP address info] ****************************************************
+ok: [ansible] => {
+    "ip_info.stdout_lines": [
+        "1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000",
+        "    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00",
+        "    inet 127.0.0.1/8 scope host lo",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 ::1/128 scope host noprefixroute ",
+        "       valid_lft forever preferred_lft forever",
+        "2: eth0@if97: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000",
+        "    link/ether bc:24:11:96:2a:dc brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "    inet 192.168.1.25/24 brd 192.168.1.255 scope global eth0",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 fda5:9e8b:f633:5e1b:be24:11ff:fe96:2adc/64 scope global dynamic mngtmpaddr ",
+        "       valid_lft 1794sec preferred_lft 1794sec",
+        "    inet6 fe80::be24:11ff:fe96:2adc/64 scope link ",
+        "       valid_lft forever preferred_lft forever"
+    ]
+}
+ok: [bind.home.com] => {
+    "ip_info.stdout_lines": [
+        "1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000",
+        "    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00",
+        "    inet 127.0.0.1/8 scope host lo",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 ::1/128 scope host noprefixroute ",
+        "       valid_lft forever preferred_lft forever",
+        "2: eth0@if80: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000",
+        "    link/ether bc:24:11:a8:de:cf brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "    inet 192.168.1.251/24 brd 192.168.1.255 scope global eth0",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 fe80::be24:11ff:fea8:decf/64 scope link proto kernel_ll ",
+        "       valid_lft forever preferred_lft forever"
+    ]
+}
+ok: [web.home.com] => {
+    "ip_info.stdout_lines": [
+        "1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000",
+        "    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00",
+        "    inet 127.0.0.1/8 scope host lo",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 ::1/128 scope host noprefixroute ",
+        "       valid_lft forever preferred_lft forever",
+        "2: eth0@if64: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000",
+        "    link/ether bc:24:11:f9:a0:8c brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "    inet 192.168.1.108/24 brd 192.168.1.255 scope global eth0",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 fe80::be24:11ff:fef9:a08c/64 scope link proto kernel_ll ",
+        "       valid_lft forever preferred_lft forever"
+    ]
+}
+ok: [stepca.home.com] => {
+    "ip_info.stdout_lines": [
+        "1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000",
+        "    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00",
+        "    inet 127.0.0.1/8 scope host lo",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 ::1/128 scope host noprefixroute ",
+        "       valid_lft forever preferred_lft forever",
+        "2: eth0@if92: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000",
+        "    link/ether bc:24:11:8e:36:42 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "    inet 192.168.100.51/24 brd 192.168.100.255 scope global eth0",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 fe80::be24:11ff:fe8e:3642/64 scope link ",
+        "       valid_lft forever preferred_lft forever"
+    ]
+}
+ok: [unbound.home.com] => {
+    "ip_info.stdout_lines": [
+        "1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000",
+        "    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00",
+        "    inet 127.0.0.1/8 scope host lo",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 ::1/128 scope host ",
+        "       valid_lft forever preferred_lft forever",
+        "2: eth0@if84: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000",
+        "    link/ether bc:24:11:93:48:bb brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "    inet 192.168.1.252/24 brd 192.168.1.255 scope global eth0",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 fe80::be24:11ff:fe93:48bb/64 scope link ",
+        "       valid_lft forever preferred_lft forever"
+    ]
+}
+ok: [uptimek.home.com] => {
+    "ip_info.stdout_lines": [
+        "1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000",
+        "    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00",
+        "    inet 127.0.0.1/8 scope host lo",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 ::1/128 scope host noprefixroute ",
+        "       valid_lft forever preferred_lft forever",
+        "2: eth0@if89: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000",
+        "    link/ether bc:24:11:0b:98:75 brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "    inet 192.168.1.181/24 brd 192.168.1.255 scope global eth0",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 fda5:9e8b:f633:5e1b:be24:11ff:fe0b:9875/64 scope global dynamic mngtmpaddr ",
+        "       valid_lft 1793sec preferred_lft 1793sec",
+        "    inet6 fe80::be24:11ff:fe0b:9875/64 scope link ",
+        "       valid_lft forever preferred_lft forever"
+    ]
+}
+ok: [wazuh.home.com] => {
+    "ip_info.stdout_lines": [
+        "1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000",
+        "    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00",
+        "    inet 127.0.0.1/8 scope host lo",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 ::1/128 scope host noprefixroute ",
+        "       valid_lft forever preferred_lft forever",
+        "2: eth0@if91: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000",
+        "    link/ether bc:24:11:ca:5a:0a brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "    inet 192.168.1.219/24 brd 192.168.1.255 scope global eth0",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 fda5:9e8b:f633:5e1b:be24:11ff:feca:5a0a/64 scope global dynamic mngtmpaddr ",
+        "       valid_lft 1793sec preferred_lft 1793sec",
+        "    inet6 fe80::be24:11ff:feca:5a0a/64 scope link ",
+        "       valid_lft forever preferred_lft forever"
+    ]
+}
+ok: [ovrsr.home.com] => {
+    "ip_info.stdout_lines": [
+        "1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000",
+        "    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00",
+        "    inet 127.0.0.1/8 scope host lo",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 ::1/128 scope host noprefixroute ",
+        "       valid_lft forever preferred_lft forever",
+        "2: eth0@if96: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000",
+        "    link/ether bc:24:11:a8:c7:ef brd ff:ff:ff:ff:ff:ff link-netnsid 0",
+        "    inet 192.168.100.15/24 brd 192.168.100.255 scope global eth0",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 fe80::be24:11ff:fea8:c7ef/64 scope link ",
+        "       valid_lft forever preferred_lft forever",
+        "3: br-12fb579fe795: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default ",
+        "    link/ether 2e:b8:cc:3e:9e:95 brd ff:ff:ff:ff:ff:ff",
+        "    inet 172.18.0.1/16 brd 172.18.255.255 scope global br-12fb579fe795",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 fe80::2cb8:ccff:fe3e:9e95/64 scope link ",
+        "       valid_lft forever preferred_lft forever",
+        "4: docker0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default ",
+        "    link/ether c6:a0:c0:c5:a5:d5 brd ff:ff:ff:ff:ff:ff",
+        "    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0",
+        "       valid_lft forever preferred_lft forever",
+        "    inet6 fe80::c4a0:c0ff:fec5:a5d5/64 scope link ",
+        "       valid_lft forever preferred_lft forever",
+        "6: vethfc77397@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master docker0 state UP group default ",
+        "    link/ether de:4e:60:f9:d3:f6 brd ff:ff:ff:ff:ff:ff link-netnsid 2",
+        "    inet6 fe80::dc4e:60ff:fef9:d3f6/64 scope link ",
+        "       valid_lft forever preferred_lft forever",
+        "8: veth66fb4d4@if2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-12fb579fe795 state UP group default ",
+        "    link/ether 4e:bd:c0:19:02:1f brd ff:ff:ff:ff:ff:ff link-netnsid 3",
+        "    inet6 fe80::4cbd:c0ff:fe19:21f/64 scope link ",
+        "       valid_lft forever preferred_lft forever"
+    ]
+}
+
+TASK [Get routing table] *******************************************************
+changed: [bind.home.com]
+changed: [web.home.com]
+changed: [stepca.home.com]
+changed: [unbound.home.com]
+changed: [ansible]
+changed: [wazuh.home.com]
+changed: [ovrsr.home.com]
+changed: [uptimek.home.com]
+
+TASK [Show routing table] ******************************************************
+ok: [ansible] => {
+    "route_info.stdout_lines": [
+        "default via 192.168.1.1 dev eth0 ",
+        "192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.25 "
+    ]
+}
+ok: [bind.home.com] => {
+    "route_info.stdout_lines": [
+        "default via 192.168.1.1 dev eth0 proto static ",
+        "192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.251 "
+    ]
+}
+ok: [web.home.com] => {
+    "route_info.stdout_lines": [
+        "default via 192.168.1.1 dev eth0 proto static ",
+        "192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.108 "
+    ]
+}
+ok: [stepca.home.com] => {
+    "route_info.stdout_lines": [
+        "default via 192.168.100.1 dev eth0 onlink ",
+        "192.168.100.0/24 dev eth0 proto kernel scope link src 192.168.100.51 "
+    ]
+}
+ok: [unbound.home.com] => {
+    "route_info.stdout_lines": [
+        "default via 192.168.1.1 dev eth0 proto static ",
+        "192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.252 "
+    ]
+}
+ok: [uptimek.home.com] => {
+    "route_info.stdout_lines": [
+        "default via 192.168.1.1 dev eth0 onlink ",
+        "192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.181 "
+    ]
+}
+ok: [wazuh.home.com] => {
+    "route_info.stdout_lines": [
+        "default via 192.168.1.1 dev eth0 onlink ",
+        "192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.219 "
+    ]
+}
+ok: [ovrsr.home.com] => {
+    "route_info.stdout_lines": [
+        "default via 192.168.100.1 dev eth0 onlink ",
+        "172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1 ",
+        "172.18.0.0/16 dev br-12fb579fe795 proto kernel scope link src 172.18.0.1 ",
+        "192.168.100.0/24 dev eth0 proto kernel scope link src 192.168.100.15 "
+    ]
+}
+
+TASK [Get hostname] ************************************************************
+changed: [stepca.home.com]
+changed: [bind.home.com]
+changed: [web.home.com]
+changed: [unbound.home.com]
+changed: [ansible]
+changed: [wazuh.home.com]
+changed: [uptimek.home.com]
+changed: [ovrsr.home.com]
+
+TASK [Show hostname] ***********************************************************
+ok: [ansible] => {
+    "host_name.stdout": "ansible"
+}
+ok: [bind.home.com] => {
+    "host_name.stdout": "bind9-new"
+}
+ok: [web.home.com] => {
+    "host_name.stdout": "apache-ubuntu"
+}
+ok: [stepca.home.com] => {
+    "host_name.stdout": "stepca"
+}
+ok: [unbound.home.com] => {
+    "host_name.stdout": "unbound"
+}
+ok: [uptimek.home.com] => {
+    "host_name.stdout": "uptime-kuma-debian"
+}
+ok: [wazuh.home.com] => {
+    "host_name.stdout": "wazuh"
+}
+ok: [ovrsr.home.com] => {
+    "host_name.stdout": "overseerr"
+}
+
+TASK [Get nameservers] *********************************************************
+changed: [stepca.home.com]
+changed: [web.home.com]
+changed: [bind.home.com]
+changed: [unbound.home.com]
+changed: [ansible]
+changed: [wazuh.home.com]
+changed: [ovrsr.home.com]
+changed: [uptimek.home.com]
+
+TASK [Show nameservers] ********************************************************
+ok: [ansible] => {
+    "resolv_conf.stdout_lines": [
+        "# --- BEGIN PVE ---",
+        "search home.com",
+        "nameserver 192.168.1.250",
+        "# --- END PVE ---"
+    ]
+}
+ok: [bind.home.com] => {
+    "resolv_conf.stdout_lines": [
+        "# --- BEGIN PVE ---",
+        "search home.com",
+        "nameserver 192.168.1.251",
+        "# --- END PVE ---"
+    ]
+}
+ok: [web.home.com] => {
+    "resolv_conf.stdout_lines": [
+        "# --- BEGIN PVE ---",
+        "search home.com",
+        "nameserver 192.168.1.250",
+        "# --- END PVE ---"
+    ]
+}
+ok: [stepca.home.com] => {
+    "resolv_conf.stdout_lines": [
+        "# --- BEGIN PVE ---",
+        "search home.com",
+        "nameserver 192.168.1.250",
+        "# --- END PVE ---"
+    ]
+}
+ok: [unbound.home.com] => {
+    "resolv_conf.stdout_lines": [
+        "# --- BEGIN PVE ---",
+        "search home.com",
+        "nameserver 192.168.1.250",
+        "nameserver 192.168.1.126",
+        "# --- END PVE ---"
+    ]
+}
+ok: [uptimek.home.com] => {
+    "resolv_conf.stdout_lines": [
+        "# --- BEGIN PVE ---",
+        "search home.com",
+        "nameserver 192.168.1.250",
+        "nameserver 192.168.1.126",
+        "# --- END PVE ---"
+    ]
+}
+ok: [wazuh.home.com] => {
+    "resolv_conf.stdout_lines": [
+        "# --- BEGIN PVE ---",
+        "search home.com",
+        "nameserver 192.168.1.250",
+        "nameserver 192.168.1.126",
+        "# --- END PVE ---"
+    ]
+}
+ok: [ovrsr.home.com] => {
+    "resolv_conf.stdout_lines": [
+        "# --- BEGIN PVE ---",
+        "search home.com",
+        "nameserver 192.168.1.250",
+        "# --- END PVE ---"
+    ]
+}
+
+TASK [Get authorized SSH keys] *************************************************
+ok: [stepca.home.com]
+ok: [unbound.home.com]
+ok: [web.home.com]
+ok: [bind.home.com]
+[ERROR]: Task failed: Module failed: File not found: /home/ansible/.ssh/authorized_keys: [Errno 2] No such file or directory: '/home/ansible/.ssh/authorized_keys'
+Origin: /etc/ansible/ansible_lab/sys_audit.yml:49:7
+
+47         var: resolv_conf.stdout_lines
+48
+49     - name: Get authorized SSH keys
+         ^ column 7
+
+fatal: [ansible]: FAILED! => {"changed": false, "msg": "File not found: /home/ansible/.ssh/authorized_keys"}
+...ignoring
+ok: [wazuh.home.com]
+ok: [ovrsr.home.com]
+ok: [uptimek.home.com]
+
+TASK [Show authorized SSH keys] ************************************************
+skipping: [ansible]
+ok: [bind.home.com] => {
+    "msg": [
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM6pV5iqOKDFRfFzNQ+OSXIPYJ1wmsywJhJOJ/wcxZQ1 root@ansible",
+        ""
+    ]
+}
+ok: [web.home.com] => {
+    "msg": [
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM6pV5iqOKDFRfFzNQ+OSXIPYJ1wmsywJhJOJ/wcxZQ1 root@ansible",
+        ""
+    ]
+}
+ok: [stepca.home.com] => {
+    "msg": [
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM6pV5iqOKDFRfFzNQ+OSXIPYJ1wmsywJhJOJ/wcxZQ1 root@ansible",
+        ""
+    ]
+}
+ok: [unbound.home.com] => {
+    "msg": [
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM6pV5iqOKDFRfFzNQ+OSXIPYJ1wmsywJhJOJ/wcxZQ1 root@ansible",
+        ""
+    ]
+}
+ok: [uptimek.home.com] => {
+    "msg": [
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM6pV5iqOKDFRfFzNQ+OSXIPYJ1wmsywJhJOJ/wcxZQ1 root@ansible",
+        ""
+    ]
+}
+ok: [wazuh.home.com] => {
+    "msg": [
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM6pV5iqOKDFRfFzNQ+OSXIPYJ1wmsywJhJOJ/wcxZQ1 root@ansible",
+        ""
+    ]
+}
+ok: [ovrsr.home.com] => {
+    "msg": [
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM6pV5iqOKDFRfFzNQ+OSXIPYJ1wmsywJhJOJ/wcxZQ1 root@ansible",
+        ""
+    ]
+}
+
+PLAY RECAP *********************************************************************
+192.168.1.100              : ok=0    changed=0    unreachable=1    failed=0    skipped=0    rescued=0    ignored=0   
+ansible                    : ok=12   changed=5    unreachable=0    failed=0    skipped=1    rescued=0    ignored=1   
+bind.home.com              : ok=13   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+jellyfin.home.com          : ok=0    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+kali.home.com              : ok=0    changed=0    unreachable=1    failed=0    skipped=0    rescued=0    ignored=0   
+ovrsr.home.com             : ok=13   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+pihole.home.com            : ok=0    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+plex.home.com              : ok=0    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+splunk.home.com            : ok=0    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+stepca.home.com            : ok=13   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+traefik.home.com           : ok=0    changed=0    unreachable=1    failed=0    skipped=0    rescued=0    ignored=0   
+unbound.home.com           : ok=13   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+uptimek.home.com           : ok=13   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+vault-home.com             : ok=0    changed=0    unreachable=1    failed=0    skipped=0    rescued=0    ignored=0   
+wazuh.home.com             : ok=13   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+web.home.com               : ok=13   changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
