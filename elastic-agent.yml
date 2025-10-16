@@ -6,7 +6,7 @@ outputs:
     hosts:
       - https://192.168.200.8:9200
     ssl.ca_trusted_fingerprint: 1104e9a5afa46c2981ba5dbeb8bfd9071fc7adf6395001c890c0b0620a5dad8a
-    api_key: 'yN6JsJkBaypNy2L7pSzJ:EnEUzLuXfslHVIh4Uw7iqA'
+    api_key: ''
     preset: balanced
 output_permissions:
   default:
