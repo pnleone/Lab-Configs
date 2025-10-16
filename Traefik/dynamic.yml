@@ -146,6 +146,14 @@ http:
       tls: true
       middlewares:
        - authentik
+    
+    dashbd-router:
+      rule: "Host(`dashbd.home.com`)"
+      service: dashbd-service
+      entryPoints: [websecure]
+      tls: true
+      middlewares:
+       - authentik
 
   services:
     vault-service:
@@ -270,6 +278,11 @@ http:
         servers:
           - url: "http://192.168.1.126:5000"
 
+    dashbd-service:
+      loadBalancer:
+        serversTransport: dashbd-tls
+        servers:
+          - url: "http://192.168.200.7:7990"
 
   middlewares:
     dashboard-auth:
@@ -413,6 +426,11 @@ http:
       serverName: checkmk.home.com
       insecureSkipVerify: true
 
+    dashbd-tls:
+      rootCAs:
+        - /certs/root_ca.crt
+      serverName: dashbd.home.com
+      insecureSkipVerify: true
 
 tls:
   certificates:
@@ -452,7 +470,8 @@ tls:
       keyFile: /certs/n8n.key
     - certFile: /certs/fullchain_checkmk.crt
       keyFile: /certs/checkmk.key
-
+    - certFile: /certs/fullchain_dashbd.crt
+      keyFile: /certs/dashbd.key
 
 metrics:
   prometheus:
