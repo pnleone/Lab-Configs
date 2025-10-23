@@ -1,0 +1,47 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: portainer-agent
+  namespace: portainer-agent
+  labels:
+    app: portainer-agent
+spec:
+  selector:
+    matchLabels:
+      app: portainer-agent
+  template:
+    metadata:
+      labels:
+        app: portainer-agent
+    spec:
+      containers:
+        - name: portainer-agent
+          image: portainer/agent:latest
+          ports:
+            - containerPort: 9001
+          volumeMounts:
+            - mountPath: /var/run
+              name: docker-sock
+            - mountPath: /var/lib/docker
+              name: docker-lib
+            - mountPath: /etc/kubernetes
+              name: kube-config
+          env:
+            - name: AGENT_CLUSTER_ADDR
+              value: "portainer-agent"
+            - name: KUBERNETES_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run
+        - name: docker-lib
+          hostPath:
+            path: /var/lib/docker
+        - name: kube-config
+          hostPath:
+            path: /etc/kubernetes
