@@ -9,3 +9,6 @@ Traefik/test.yml
 stepca/test.json
 .vscode/settings.json
 Traefik/test.json
+Kube Manifests/registry.yaml
+Kube Manifests/R2-secret.yaml
+.gitignore
