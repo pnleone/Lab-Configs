@@ -50,6 +50,13 @@ spec:
       containers:
         - name: pihole
           image: pihole/pihole:latest
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
           ports:
             - containerPort: 53
               protocol: TCP
