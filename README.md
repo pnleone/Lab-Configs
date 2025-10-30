@@ -1,3 +1,5 @@
+![Alt text](homelabnetworkexternal.png)
+
 Purpose
 
 This lab environment has been deliberately designed as both a technical proving ground and a personal growth accelerator. Its primary purpose is to deepen my expertise across several interrelated domains that are critical to modern enterprise IT operations:
