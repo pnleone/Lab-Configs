@@ -1,4 +1,4 @@
-![Alt text](homelabextbluer.jpg)
+![Alt text](homelabnetworkextblue.png)
 
 Purpose
 
