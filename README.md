@@ -1,3 +1,5 @@
+![Alt text](homelabnetworkextblue.png)
+
 Purpose
 
 This lab environment has been deliberately designed as both a technical proving ground and a personal growth accelerator. Its primary purpose is to deepen my expertise across several interrelated domains that are critical to modern enterprise IT operations:
@@ -89,6 +91,9 @@ A comprehensive summary of hardening measures implemented across the lab environ
   
   •	Tailscale Mesh VPN 
   WireGuard-based overlay network for secure remote access to internal lab applications. 
+
+   •	Cloudflare
+  Cloudflare Tunnels provide secure, authenticated inbound access to internal services without exposing public IPs or opening firewall ports.
   
   •	TOR Browser for Anonymous Browsing
   Sandboxed VM host TOR Browser for privacy-sensitive research and threat intelligence gathering. 
@@ -108,6 +113,9 @@ A comprehensive summary of hardening measures implemented across the lab environ
   
   •	Pulse 
   Proxmox environment monitoring.
+
+  •	Checkmk
+  IT monitoring solution supporting virtual machine, container and application health monitoring.
   
   •	OpenVAS Scan Reporting
   Scan results exported and visualized to track vulnerability trends, asset exposure, and remediation progress over time.
