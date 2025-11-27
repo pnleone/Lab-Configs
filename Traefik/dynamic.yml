@@ -7,7 +7,7 @@ http:
       tls: true
       middlewares:
        - authentik
-
+       - secure-headers
     #authentikop-router:
     #  rule: "Host(`authentik.home.com`) && PathPrefix(`/outpost.goauthentik.io/`)"
     #  priority: 15
@@ -146,7 +146,7 @@ http:
       tls: true
       middlewares:
        - authentik
-    
+
     dashbd-router:
       rule: "Host(`dashbd.home.com`)"
       service: dashbd-service
@@ -331,6 +331,21 @@ http:
           X-Forwarded-Proto: "https"
           X-Forwarded-Port: "443"
 
+    secure-headers:
+      headers:
+        sslRedirect: false
+        stsSeconds: 31536000
+        browserXssFilter: true
+        contentTypeNosniff: true
+
+    my-crowdsec-bouncer-traefik-plugin:
+      plugin:
+        crowdsec-bouncer-traefik-plugin:
+          CrowdsecLapiUrl: http://192.168.1.33:8080
+          CrowdsecLapiKey: "redacted"
+          Enabled: "false"
+
+
   serversTransports:
 
     vault-tls:
@@ -472,6 +487,7 @@ tls:
       keyFile: /certs/checkmk.key
     - certFile: /certs/fullchain_dashbd.crt
       keyFile: /certs/dashbd.key
+
 
 metrics:
   prometheus:
