@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: soc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cortex-data-pvc
+  namespace: soc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: local-path
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cortex-analyzers-pvc
+  namespace: soc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: local-path
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cortex-application-conf
+  namespace: soc
+data:
+  application.conf: |
+    play {
+      http {
+        port = 9001
+      }
+    }
+    cortex {
+      analyzers {
+        path = /opt/cortex/analyzers
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cortex
+  namespace: soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cortex
+  template:
+    metadata:
+      labels:
+        app: cortex
+    spec:
+      containers:
+      - name: cortex
+        image: thehiveproject/cortex:3.1.1
+        ports:
+        - containerPort: 9001
+        env:
+        - name: VIRUSTOTAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: virustotal-secret
+              key: VIRUSTOTAL_API_KEY
+        volumeMounts:
+        - name: cortex-data
+          mountPath: /opt/cortex/data
+        - name: cortex-analyzers
+          mountPath: /opt/cortex/analyzers
+        - name: cortex-config
+          mountPath: /etc/cortex/application.conf
+          subPath: application.conf
+      volumes:
+      - name: cortex-data
+        persistentVolumeClaim:
+          claimName: cortex-data-pvc
+      - name: cortex-analyzers
+        persistentVolumeClaim:
+          claimName: cortex-analyzers-pvc
+      - name: cortex-config
+        configMap:
+          name: cortex-application-conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cortex
+  namespace: soc
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.35
+  selector:
+    app: cortex
+  ports:
+  - protocol: TCP
+    port: 9001
+    targetPort: 9001

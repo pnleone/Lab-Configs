@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuffle
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shuffle
+  template:
+    metadata:
+      labels:
+        app: shuffle
+    spec:
+      containers:
+      - name: shuffle
+        image: frikky/shuffle:latest
+        ports:
+        - containerPort: 3001
+        volumeMounts:
+        - name: shuffle-data
+          mountPath: /opt/shuffle/data
+  volumes:
+  - name: shuffle-data
+    persistentVolumeClaim:
+      claimName: shuffle-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shuffle
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.36
+  selector:
+    app: shuffle
+  ports:
+  - port: 3001
+    targetPort: 3001

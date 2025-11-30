@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thehive
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thehive
+  template:
+    metadata:
+      labels:
+        app: thehive
+    spec:
+      containers:
+      - name: thehive
+        image: strangebee/thehive:5.5.13-1
+        ports:
+        - containerPort: 9000
+        env:
+        - name: CASSANDRA_HOSTS
+          value: cassandra
+        - name: ELASTICSEARCH_URL
+          value: http://elasticsearch:9200
+        volumeMounts:
+        - name: thehive-data
+          mountPath: /opt/thehive/data
+  volumes:
+  - name: thehive-data
+    persistentVolumeClaim:
+      claimName: thehive-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thehive
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.33   # MetalLB IP
+  selector:
+    app: thehive
+  ports:
+  - port: 9000
+    targetPort: 9000

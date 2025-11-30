@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cassandra
+spec:
+  serviceName: cassandra
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cassandra
+  template:
+    metadata:
+      labels:
+        app: cassandra
+    spec:
+      containers:
+      - name: cassandra
+        image: docker.io/library/cassandra:4.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9042
+        env:
+        - name: CASSANDRA_CLUSTER_NAME
+          value: "TheHiveCluster"
+        - name: CASSANDRA_SEEDS
+          value: "cassandra-0.cassandra.default.svc.cluster.local"
+        - name: CASSANDRA_START_RPC
+          value: "true"
+        volumeMounts:
+        - name: cassandra-data
+          mountPath: /var/lib/cassandra
+  volumeClaimTemplates:
+  - metadata:
+      name: cassandra-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: local-path
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cassandra
+spec:
+  clusterIP: None   # Headless service for StatefulSet DNS
+  selector:
+    app: cassandra
+  ports:
+  - port: 9042
+    targetPort: 9042
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cassandra-lb
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.36
+  selector:
+    app: cassandra
+  ports:
+  - port: 9042
+    targetPort: 9042
