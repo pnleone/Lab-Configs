@@ -39,30 +39,7 @@ env:
         name: r2-secret
         key: S3_SECRET_KEY
 
-config:
-  application.conf: |
-    storage {
-      provider = s3
-      s3 {
-        endpoint = "https://<account_id>.r2.cloudflarestorage.com"
-        accessKey = ${S3_ACCESS_KEY}
-        secretKey = ${S3_SECRET_KEY}
-        bucket = "thehive-attachments"
-        region = "auto"
-      }
-    }
-    cortex {
-      servers = [
-        {
-          name = "cortex"
-          url = "http://cortex.soc.svc.cluster.local:9001"
-          auth {
-            type = "bearer"
-            key = ${CORTEX_API_KEY}
-          }
-        }
-      ]
-    }
+
 
 persistence:
   enabled: true

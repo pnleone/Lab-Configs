@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cortex-application-conf
+  namespace: soc
+data:
+  application.conf: |
+    play {
+      http {
+        port = 9001
+      }
+    }
+    cortex {
+      analyzers {
+        path = /opt/cortex/analyzers
+      }
+    }
