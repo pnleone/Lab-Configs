@@ -1,7 +1,52 @@
 apiVersion: v1
-kind: Namespace
+kind: ServiceAccount
 metadata:
-  name: soc
+  name: cortex-sa
+  namespace: soc
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cortex-config
+  namespace: soc
+data:
+  application.conf: |
+    play {
+      http {
+        port = 9001
+        secret.key = ${?CORTEX_HTTP_SECRET}
+      }
+      http.parser.maxDiskBuffer = 100MB
+      http.parser.maxMemoryBuffer = 100MB
+    }
+
+    search {
+      host = ["http://elasticsearch.soc.svc.cluster.local:9200"]
+      index = cortex
+    }
+
+    analyzer {
+      urls = ["https://catalogs.download.strangebee.com/latest/json/analyzers.json"]
+      path = "/opt/cortex/analyzers"
+    }
+
+    responder {
+      urls = ["https://catalogs.download.strangebee.com/latest/json/responders.json"]
+      path = "/opt/cortex/responders"
+    }
+    
+    job.runner = process
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cortex-virustotal-config
+  namespace: soc
+data:
+  virustotal.json: |
+    {
+      "key": "${VIRUSTOTAL_API_KEY}"
+    }
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -10,11 +55,11 @@ metadata:
   namespace: soc
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
-      storage: 2Gi
-  storageClassName: local-path
+      storage: 5Gi
+  storageClassName: synology-nfs-sc
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -23,17 +68,32 @@ metadata:
   namespace: soc
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
-      storage: 2Gi
-  storageClassName: local-path
+      storage: 5Gi
+  storageClassName: synology-nfs-sc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cortex-shared-fs-claim
+  namespace: soc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: synology-nfs-sc
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cortex
   namespace: soc
+  labels:
+    app: cortex
 spec:
   replicas: 1
   selector:
@@ -44,35 +104,110 @@ spec:
       labels:
         app: cortex
     spec:
+      serviceAccountName: cortex-sa
+      initContainers:
+        - name: check-elasticsearch
+          image: curlimages/curl:8.17.0
+          command: ["sh", "-c", "until curl -s http://elasticsearch.soc.svc.cluster.local:9200; do echo waiting for ES; sleep 5; done"]
+        - name: install-cortexutils
+          image: python:3.11
+          command: 
+            - sh
+            - -c
+            - |
+              pip3 install --upgrade pip
+              pip3 install cortexutils
+              pip3 install -r /tmp/requirements.txt || true
+          volumeMounts:
+            - name: python-libs
+              mountPath: /usr/local/lib/python3.11/site-packages
       containers:
-      - name: cortex
-        image: thehiveproject/cortex:3.1.1
-        ports:
-        - containerPort: 9001
-        env:
-        - name: VIRUSTOTAL_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: virustotal-secret
-              key: VIRUSTOTAL_API_KEY
-        volumeMounts:
-        - name: cortex-data
-          mountPath: /opt/cortex/data
-        - name: cortex-analyzers
-          mountPath: /opt/cortex/analyzers
-        - name: cortex-config
-          mountPath: /etc/cortex/application.conf
-          subPath: application.conf
+        - name: cortex
+          image: thehiveproject/cortex:4.0
+          ports:
+            - containerPort: 9001
+              name: http
+          env:
+            - name: CORTEX_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cortex-api-secret
+                  key: CORTEX_API_KEY
+            - name: CORTEX_HTTP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: cortex-http-secret
+                  key: CORTEX_HTTP_SECRET
+            - name: PYTHONPATH
+              value: "/usr/local/lib/python3.11/site-packages"
+            - name: VIRUSTOTAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: virustotal-secret
+                  key: VIRUSTOTAL_API_KEY
+
+          volumeMounts:
+            - name: cortex-data-pvc
+              mountPath: /opt/cortex/data
+            - name: cortex-analyzers-pvc
+              mountPath: /opt/cortex/analyzers
+            - name: cortex-shared-fs-claim
+              mountPath: /opt/cortex/shared
+            - name: config
+              mountPath: /etc/cortex/conf
+            - name: python-libs
+              mountPath: /usr/local/lib/python3.11/site-packages
+            - name: cortex-virustotal-config
+              mountPath: /opt/cortex/analyzers/virustotal
+              readOnly: true
+
+          startupProbe:
+            tcpSocket:
+              port: 9001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9001
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9001
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+        - name: python3-sidecar
+          image: python:3.11
+          command: ["sleep", "infinity"]
+          volumeMounts:
+            - name: cortex-analyzers-pvc
+              mountPath: /opt/cortex/analyzers
       volumes:
-      - name: cortex-data
-        persistentVolumeClaim:
-          claimName: cortex-data-pvc
-      - name: cortex-analyzers
-        persistentVolumeClaim:
-          claimName: cortex-analyzers-pvc
-      - name: cortex-config
-        configMap:
-          name: cortex-application-conf
+        - name: cortex-data-pvc
+          persistentVolumeClaim:
+            claimName: cortex-data-pvc
+        - name: cortex-analyzers-pvc
+          persistentVolumeClaim:
+            claimName: cortex-analyzers-pvc
+        - name: cortex-shared-fs-claim
+          persistentVolumeClaim:
+            claimName: cortex-shared-fs-claim
+        - name: config
+          configMap:
+            name: cortex-config
+        - name: python-libs
+          emptyDir: {}
+        - name: cortex-virustotal-config
+          configMap:
+            name: cortex-virustotal-config
 ---
 apiVersion: v1
 kind: Service
@@ -85,6 +220,6 @@ spec:
   selector:
     app: cortex
   ports:
-  - protocol: TCP
-    port: 9001
-    targetPort: 9001
+    - protocol: TCP
+      port: 9001
+      targetPort: 9001

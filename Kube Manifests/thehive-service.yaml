@@ -7,13 +7,13 @@ spec:
   type: LoadBalancer
   loadBalancerIP: 192.168.200.33
   selector:
-    app.kubernetes.io/component: server
-    app.kubernetes.io/instance: thehive
     app.kubernetes.io/name: thehive
+    app.kubernetes.io/instance: thehive
+    app.kubernetes.io/component: server
   ports:
-  - name: http
-    port: 9000
-    targetPort: 9000
-  - name: kamon
-    port: 9095
-    targetPort: 9095
+    - name: http
+      port: 9000
+      targetPort: 9000
+    - name: kamon
+      port: 9095
+      targetPort: 9095

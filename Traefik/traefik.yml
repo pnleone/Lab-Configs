@@ -1,9 +1,12 @@
+
 experimental:
   plugins:
-    crowdsec-bouncer-traefik-plugin:
-      moduleName: "github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
-      version: "v1.4.6"
-
+    traefik-safeline:
+       moduleName: "github.com/chaitin/traefik-safeline"
+       version: "v1.4.0"
+    #crowdsec-bouncer-traefik-plugin:
+      #moduleName: "github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
+      #version: "v1.4.6"
 
 entryPoints:
   web:

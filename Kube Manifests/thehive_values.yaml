@@ -1,48 +1,122 @@
-cassandra:
-  enabled: false
+# values.yaml for TheHive Helm chart
 
-elasticsearch:
-  enabled: false
+nameOverride: ""
+fullnameOverride: ""
 
-minio:
-  enabled: true
+imagePullSecrets: []
 
 thehive:
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "2048Mi"
+      ephemeral-storage: "4Gi"
+    limits:
+      cpu: "3000m"
+      memory: "3584Mi"
+      ephemeral-storage: "4Gi"
+
+  jvmOpts: "-Xms1g -Xmx2g -Xmn300m"
+
+  image:
+    registry: docker.io
+    repository: strangebee/thehive
+    tag: "5.5"
+    pullPolicy: IfNotPresent
+
+  # --- Database (Cassandra, no auth required) ---
   database:
+    username: ""        # not required
+    password: ""        # not required
+    k8sSecretName: ""   # not required
+    k8sSecretKey: ""    # not required
     hostnames:
-      - cassandra.soc.svc.cluster.local
+      - "cassandra.soc.svc.cluster.local"
+    wait: false
+
+  # --- Index (Elasticsearch, no auth required) ---
   index:
+    username: ""        # not required
+    password: ""        # not required
+    k8sSecretName: ""   # not required
+    k8sSecretKey: ""    # not required
     hostnames:
-      - elasticsearch.soc.svc.cluster.local
+      - "elasticsearch.soc.svc.cluster.local"
 
-replicaCount:
-  thehive: 1
-  cassandra: 1
-  elasticsearch: 1
-  cortex: 1
-  shuffle: 1
+  # --- Storage (Cloudflare R2 S3) ---
+  storage:
+    k8sSecretName: "thehive-secrets"
+    k8sSecretKey: "S3_SECRET_KEY"
+    endpoint: "https://bf6d65d7b59cef1c2543a0b2a855b207.r2.cloudflarestorage.com"
+    bucket: "thehive"
+    region: "auto"
+    usePathAccessStyle: false
 
-env:
-  - name: CORTEX_API_KEY
-    valueFrom:
-      secretKeyRef:
-        name: cortex-api-secret
-        key: CORTEX_API_KEY
-  - name: S3_ACCESS_KEY
-    valueFrom:
-      secretKeyRef:
-        name: r2-secret
-        key: S3_ACCESS_KEY
-  - name: S3_SECRET_KEY
-    valueFrom:
-      secretKeyRef:
-        name: r2-secret
-        key: S3_SECRET_KEY
+  # --- HTTP secret ---
+  httpSecret: ""   # leave blank, use secret
+  k8sSecretName: "thehive-secrets"
+  k8sSecretKey: "THEHIVE_HTTP_SECRET"
 
+  # --- Cortex integration ---
+  cortex:
+    enabled: true
+    protocol: "http"
+    hostnames:
+      - "cortex.soc.svc.cluster.local"
+    port: 9001
+    api_keys: []   # leave blank, use secret
+    k8sSecretName: "thehive-secrets"
+    k8sSecretKey: "CORTEX_API_KEY"
 
+  # --- Custom application.conf (optional override) ---
+  configFile: |
+    include classpath("application.conf")
+    play.config.check = false
+    kamon { enabled = false }
+    notification.webhook.endpoints = []
 
+  # --- Monitoring (Kamon metrics port) ---
+  monitoring:
+    enabled: true
+    port: 9095
+
+  # --- Ingress (disabled, using LoadBalancer instead) ---
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts: []
+    tls: []
+
+  # --- Extra volumes/mounts (optional) ---
+  volumes: []
+  volumeMounts: []
+
+  # --- Scheduling hints ---
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# --- Service override ---
+service:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.33
+  ports:
+    - name: http
+      port: 9000
+      targetPort: 9000
+    - name: kamon
+      port: 9095
+      targetPort: 9095
+
+# --- Persistence volumes ---
 persistence:
-  enabled: true
-  storageClass: local-path
-  accessModes: [ "ReadWriteOnce" ]
-  size: 10Gi
+  data:
+    enabled: true
+    existingClaim: thehive-data-pvc
+  index:
+    enabled: true
+    existingClaim: thehive-index-pvc
+

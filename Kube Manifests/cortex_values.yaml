@@ -1,0 +1,117 @@
+cortex:
+  replicas: 1
+  image:
+    repository: thehiveproject/cortex
+    tag: "3.1.1"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+
+  service:
+    type: LoadBalancer
+    loadBalancerIP: 192.168.200.35
+    port: 9001
+
+  httpSecret: "83fa9cc65732dc4c66365cfcdf0df0878532aeaacc0ba8ecef8b622a66fc1473"
+
+  serviceAccount:
+    create: true
+    name: cortex-sa
+
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteMany
+    size: 5Gi
+    storageClassName: synology-nfs-sc
+    mountPath: /opt/cortex/data
+
+  analyzers:
+    pvc:
+      enabled: true
+      accessModes:
+        - ReadWriteMany
+      size: 5Gi
+      storageClassName: synology-nfs-sc
+      mountPath: /opt/cortex/analyzers
+
+  sharedFs:
+    enabled: true
+    accessModes:
+      - ReadWriteMany
+    size: 5Gi
+    storageClassName: synology-nfs-sc
+    mountPath: /opt/cortex/shared
+
+  # Explicit PVC mounts
+  extraVolumes:
+    - name: cortex-data-pvc
+      persistentVolumeClaim:
+        claimName: cortex-data-pvc
+    - name: cortex-analyzers-pvc
+      persistentVolumeClaim:
+        claimName: cortex-analyzers-pvc
+    - name: cortex-shared-fs-claim
+      persistentVolumeClaim:
+        claimName: cortex-shared-fs-claim
+
+  extraVolumeMounts:
+    - name: cortex-data-pvc
+      mountPath: /opt/cortex/data
+    - name: cortex-analyzers-pvc
+      mountPath: /opt/cortex/analyzers
+    - name: cortex-shared-fs-claim
+      mountPath: /opt/cortex/shared
+
+  extraInitContainers:
+    - name: install-cortexutils
+      image: python:3.11
+      command: ["pip3", "install", "cortexutils"]
+      volumeMounts:
+        - name: cortex-analyzers-pvc
+          mountPath: /opt/cortex/analyzers
+
+  index:
+    hostnames:
+      - "elasticsearch.soc.svc.cluster.local"
+
+  env:
+    - name: CORTEX_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: cortex-api-secret
+          key: CORTEX_API_KEY
+
+  startupProbe:
+    tcpSocket:
+      port: 9001
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 60
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 9001
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 9001
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+
+elasticsearch:
+  enabled: false

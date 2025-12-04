@@ -1,0 +1,51 @@
+# Top-level image pull secrets
+imagePullSecrets:
+  - name: thehive-secrets
+
+thehive:
+  minio:
+    enabled: false
+
+  jvmOpts: "-Xms2g -Xmx2g -Xmn300m"
+
+  # --- Storage (Cloudflare R2 S3) ---
+  storage:
+    k8sSecretName: "thehive-secrets"
+    k8sSecretKey: "S3_SECRET_KEY"
+    endpoint: "https://bf6d65d7b59cef1c2543a0b2a855b207.r2.cloudflarestorage.com"
+    bucket: "thehive"
+    region: "auto"
+  startupProbe:
+      tcpSocket:
+        port: http   # maps to 9000
+      initialDelaySeconds: 30   # wait 30s before first probe
+      periodSeconds: 10         # probe every 10s
+      timeoutSeconds: 2         # allow 2s per probe
+      failureThreshold: 36      # allow ~6 minutes before giving up
+
+  # --- HTTP secret ---
+  thehive:
+  # --- HTTP secret ---
+  httpSecret: ""   # leave blank, chart will pull from secret
+  k8sSecretName: "thehive-secrets"
+  k8sSecretKey: "THEHIVE_HTTP_SECRET"
+
+  # --- Cortex integration ---
+  cortex:
+    enabled: true
+    protocol: "http"
+    hostnames:
+      - "cortex.soc.svc.cluster.local"
+    port: 9001
+    api_keys: []   # leave blank, chart will pull from secret
+    k8sSecretName: "thehive-secrets"
+    k8sSecretKey: "CORTEX_API_KEY"
+
+# --- Persistence volumes ---
+persistence:
+  data:
+    enabled: true
+    existingClaim: thehive-data-pvc
+  index:
+    enabled: true
+    existingClaim: thehive-index-pvc

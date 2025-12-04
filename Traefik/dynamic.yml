@@ -103,17 +103,11 @@ http:
       entryPoints: [websecure]
       tls: true
 
-    #checkmate-router:
-    #  rule: "Host(`checkmate.home.com`)"
-    #  service: checkmate-service
-    #  entryPoints: [websecure]
-    #  tls: true
-
-   #chk-svr-router:
-   #   rule: "Host(`chk-svr.home.com`)"
-   #   service: chk-svr-service
-   #   entryPoints: [web]
-   #   tls: false
+    waf-router:
+      rule: "Host(`waf.home.com`)"
+      service: waf-service
+      entryPoints: [websecure]
+      tls: true
 
     vas-router:
       rule: "Host(`vas.home.com`)"
@@ -236,17 +230,11 @@ http:
         servers:
           - url: "http://192.168.1.246:3000"
 
-    #checkmate-service:
-    #  loadBalancer:
-    #    serversTransport: checkmate-tls
-    #    servers:
-    #      - url: "http://192.168.1.126:7000"
-
-    #chk-svr-service:
-    #  loadBalancer:
-      #  serversTransport: checkmate-tls
-    #    servers:
-    #      - url: "http://192.168.1.126:52345"
+    waf-service:
+      loadBalancer:
+        serversTransport: waf-tls
+        servers:
+          - url: "https://192.168.1.89:9443"
 
     vas-service:
       loadBalancer:
@@ -338,13 +326,15 @@ http:
         browserXssFilter: true
         contentTypeNosniff: true
 
-    my-crowdsec-bouncer-traefik-plugin:
+    #crowdsec-bouncer:
+      #plugin:
+        #crowdsec-bouncer-traefik-plugin:
+          #CrowdsecLapiUrl: http://192.168.1.33:8080
+          #CrowdsecLapiKey: "sbP/Z65SG3cgEA4e0H7rNZ8IGdrjhRLHvVKxgBKxNVQ"
+    safeline:
       plugin:
-        crowdsec-bouncer-traefik-plugin:
-          CrowdsecLapiUrl: http://192.168.1.33:8080
-          CrowdsecLapiKey: "redacted"
-          Enabled: "false"
-
+        traefik-safeline:
+            addr: 192.168.1.89:8000
 
   serversTransports:
 
@@ -405,11 +395,11 @@ http:
       serverName: grafana.home.com
       insecureSkipVerify: true
 
-    #checkmate-tls:
-    #  rootCAs:
-    #    - /certs/root_ca.crt
-    #  serverName: checkmate.home.com
-    #  insecureSkipVerify: true
+    waf-tls:
+      rootCAs:
+        - /certs/root_ca.crt
+      serverName: waf.home.com
+      insecureSkipVerify: true
 
     vas-tls:
       rootCAs:
@@ -487,7 +477,8 @@ tls:
       keyFile: /certs/checkmk.key
     - certFile: /certs/fullchain_dashbd.crt
       keyFile: /certs/dashbd.key
-
+    - certFile: /certs/fullchain_waf2.crt
+      keyFile: /certs/waf.key
 
 metrics:
   prometheus:

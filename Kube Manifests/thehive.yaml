@@ -1,7 +1,154 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: thehive-config
+  namespace: soc
+data:
+  application.conf: |
+    include classpath("application.conf")
+    
+    # Play framework configuration
+    play.http.secret.key = ${?THEHIVE_HTTP_SECRET}
+    # Disable Play's deprecated config validation check
+    play.config.check = false
+
+    # DISABLE KAMON METRICS - prevents startup slowness and Akka namespace errors
+    kamon {
+      enabled = false
+      modules {
+        host-metrics {
+          enabled = no
+        }
+        process-metrics {
+          enabled = no
+        }
+        jvm-metrics {
+          enabled = no
+        }
+      }
+      metric.tick-interval = 60 seconds
+    }
+
+    # Database and index configuration
+    db.janusgraph {
+      storage {
+        backend = cql
+        hostname = ["cassandra.soc.svc.cluster.local"]
+        cql {
+          cluster-name = "TheHiveCluster"
+          keyspace = thehive
+          read-consistency-level = ONE
+          write-consistency-level = ONE
+        }
+      }
+      
+      ## Index configuration
+      index.search {
+        backend = elasticsearch
+        hostname = ["elasticsearch.soc.svc.cluster.local"]
+        index-name = thehive
+      }
+    }
+    
+    # Storage configuration (Cloudflare R2)
+    storage {
+      provider = s3
+      s3 {
+        endpoint = "https://bf6d65d7b59cef1c2543a0b2a855b207.r2.cloudflarestorage.com"
+        region = "auto"
+        bucket = "thehive"
+        access-key = ${?S3_ACCESS_KEY}
+        secret-key = ${?S3_SECRET_KEY}
+      }
+    }
+    
+    # Cortex integration
+    play.modules.enabled += org.thp.thehive.connector.cortex.CortexModule
+    cortex {
+      servers = [
+        {
+          name = "local-cortex"
+          url = "http://cortex.soc.svc.cluster.local:9001"
+          auth {
+            type = "bearer"
+            key = ${?CORTEX_API_KEY}
+          }
+          wsConfig {}
+        }
+      ]
+      refreshDelay = 5 seconds
+      maxRetryOnError = 3
+      statusCheckInterval = 1 minute
+    }
+    
+    # Email configuration
+    notification.webhook.endpoints = []
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postfix-config
+  namespace: soc
+data:
+  main.cf: |
+    # Gmail relay configuration
+    relayhost = [smtp.gmail.com]:587
+    smtp_use_tls = yes
+    smtp_sasl_auth_enable = yes
+    smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+    smtp_sasl_security_options = noanonymous
+    smtp_sasl_mechanism_filter = plain, login
+    smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+    smtp_tls_security_level = encrypt
+    smtp_tls_loglevel = 1
+    
+    # Basic settings
+    myhostname = thehive.soc.local
+    mydomain = soc.local
+    myorigin = $mydomain
+    mydestination = localhost.$mydomain, localhost
+    inet_interfaces = all
+    inet_protocols = ipv4
+    
+    # Disable local delivery
+    local_transport = error:local delivery disabled
+    
+    # Queue settings
+    maximal_queue_lifetime = 1h
+    bounce_queue_lifetime = 1h
+    
+    # Logging
+    maillog_file = /dev/stdout
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postfix-sasl
+  namespace: soc
+type: Opaque
+stringData:
+  sasl_passwd: |
+    [smtp.gmail.com]:587 pnleone17@gmail.com:uprwwohkzuhffvez
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: thehive-index-pvc
+  namespace: soc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-path
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: thehive
+  namespace: soc
 spec:
   replicas: 1
   selector:
@@ -12,33 +159,179 @@ spec:
       labels:
         app: thehive
     spec:
+      initContainers:
+        - name: wait-for-cassandra
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z cassandra.soc.svc.cluster.local 9042; do echo waiting for cassandra; sleep 5; done']
+        - name: wait-for-elasticsearch
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z elasticsearch.soc.svc.cluster.local 9200; do echo waiting for elasticsearch; sleep 5; done']
+        - name: wait-for-cortex
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z cortex.soc.svc.cluster.local 9001; do echo waiting for cortex; sleep 5; done']
+          
       containers:
-      - name: thehive
-        image: strangebee/thehive:5.5.13-1
-        ports:
-        - containerPort: 9000
-        env:
-        - name: CASSANDRA_HOSTS
-          value: cassandra
-        - name: ELASTICSEARCH_URL
-          value: http://elasticsearch:9200
-        volumeMounts:
+        - name: thehive
+          image: strangebee/thehive:5.5
+          ports:
+            - containerPort: 9000
+              name: http
+          env:
+            - name: TH_NO_CONFIG
+              value: "1"
+            - name: TH_NO_CONFIG_SECRET
+              value: "1"
+            - name: TH_NO_CONFIG_DB
+              value: "1"
+            - name: TH_NO_CONFIG_STORAGE
+              value: "1"
+            - name: TH_NO_CONFIG_CORTEX
+              value: "1"
+            - name: THEHIVE_HTTP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: thehive-secrets
+                  key: THEHIVE_HTTP_SECRET
+            - name: CORTEX_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cortex-api-secret
+                  key: CORTEX_API_KEY
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: r2-secret
+                  key: S3_ACCESS_KEY
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: r2-secret
+                  key: S3_SECRET_KEY
+            - name: JVM_OPTS
+              value: "-Xms1g -Xmx2g"
+          
+          command: ["/opt/thehive/entrypoint"]
+          args: 
+            - "--no-config"
+            - "--config-file"
+            - "/etc/thehive/application.conf"
+
+          volumeMounts:
+            - name: thehive-config
+              mountPath: /etc/thehive
+            - name: thehive-data
+              mountPath: /opt/thp/thehive/data
+            - name: thehive-index
+              mountPath: /opt/thp/thehive/index
+         
+          startupProbe:
+            httpGet:
+              path: /api/v1/status
+              port: 9000
+            initialDelaySeconds: 300  # 5 minutes
+            periodSeconds: 30
+            timeoutSeconds: 10
+              
+
+          livenessProbe:
+            httpGet:
+              path: /api/v1/status
+              port: 9000
+            initialDelaySeconds: 300
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+            
+          readinessProbe:
+            httpGet:
+              path: /api/v1/status
+              port: 9000
+            initialDelaySeconds: 240
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 10
+            
+        - name: postfix
+          image: alpine:3.19
+          securityContext:
+            runAsUser: 0
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "Installing Postfix and dependencies..."
+              apk add --no-cache postfix postfix-pcre cyrus-sasl ca-certificates mailx
+
+              echo "Setting hostname..."
+              echo "thehive.soc.local" > /etc/mailname
+              hostname thehive.soc.local || true
+
+              echo "Configuring Postfix..."
+              cp /etc/postfix-config/main.cf /etc/postfix/main.cf
+              cp /etc/postfix-sasl/sasl_passwd /etc/postfix/sasl_passwd
+              chmod 600 /etc/postfix/sasl_passwd
+
+              echo "Creating sasl_passwd hash..."
+              postmap /etc/postfix/sasl_passwd
+
+              echo "Setting up spool directories..."
+              mkdir -p /var/spool/postfix/{active,bounce,corrupt,defer,deferred,flush,hold,incoming,maildrop,pid,private,public,saved,trace}
+
+              echo "Fixing spool permissions..."
+              chown root:root /var/spool/postfix
+              chown root:root /var/spool/postfix/pid
+              chown root:postdrop /var/spool/postfix/maildrop
+              chown root:postdrop /var/spool/postfix/public
+              chmod 0730 /var/spool/postfix/maildrop
+
+              postconf compatibility_level=3.6
+
+              echo "Testing configuration..."
+              postconf -n
+
+              echo "Starting Postfix in foreground mode..."
+              exec postfix start-fg
+
+              
+          volumeMounts:
+            - name: postfix-config
+              mountPath: /etc/postfix-config
+            - name: postfix-sasl
+              mountPath: /etc/postfix-sasl
+            - name: postfix-spool
+              mountPath: /var/spool/postfix
+             
+                     
+      volumes:
+        - name: thehive-config
+          configMap:
+            name: thehive-config
         - name: thehive-data
-          mountPath: /opt/thehive/data
-  volumes:
-  - name: thehive-data
-    persistentVolumeClaim:
-      claimName: thehive-pvc
+          persistentVolumeClaim:
+            claimName: thehive-data-pvc
+        - name: thehive-index
+          persistentVolumeClaim:
+            claimName: thehive-index-pvc
+        - name: postfix-config
+          configMap:
+            name: postfix-config
+        - name: postfix-sasl
+          secret:
+            secretName: postfix-sasl
+        - name: postfix-spool
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: thehive
+  namespace: soc
 spec:
   type: LoadBalancer
-  loadBalancerIP: 192.168.200.33   # MetalLB IP
+  loadBalancerIP: 192.168.200.33
   selector:
     app: thehive
   ports:
-  - port: 9000
-    targetPort: 9000
+    - name: http
+      port: 9000
+      targetPort: 9000
