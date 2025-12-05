@@ -1,0 +1,576 @@
+
+# Gmail SMTP relay
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misp-mail
+  namespace: soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: misp-mail
+  template:
+    metadata:
+      labels:
+        app: misp-mail
+    spec:
+      containers:
+      - name: smtp
+        image: registry.gitlab.com/egos-tech/smtp:latest
+        env:
+        # Gmail relay credentials
+        - name: GMAIL_USER
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: GMAIL_USER   # your Gmail address
+        - name: GMAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: GMAIL_PASSWORD   # your Gmail App Password
+        # Optional: restrict relay networks
+        - name: RELAY_NETWORKS
+          value: ":192.168.0.0/16:10.0.0.0/8"
+        # Optional: set outgoing mail hostname
+        - name: MAILNAME
+          value: "thehive.local"
+        # Disable IPv6 if not needed
+        - name: DISABLE_IPV6
+          value: "true"
+        ports:
+        - containerPort: 25
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misp-mail
+  namespace: soc
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.38
+  ports:
+  - port: 25
+    targetPort: 25
+  selector:
+    app: misp-mail
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: misp-database-config
+  namespace: soc
+data:
+  database.php: |
+    <?php
+    class DATABASE_CONFIG {
+        public $default = array(
+            'datasource' => 'Database/Mysql',
+            'persistent' => false,
+            'host' => 'misp-db',
+            'login' => 'misp',
+            'password' => 'dMdrTN1hCz56B4sWXM0aXQ77p+p0OqKhH0/ZTMV7a5o=',
+            'database' => 'misp',
+            'prefix' => '',
+            'encoding' => 'utf8',
+        );
+    }
+--- 
+# Redis (Valkey)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misp-redis
+  namespace: soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: misp-redis
+  template:
+    metadata:
+      labels:
+        app: misp-redis
+    spec:
+      containers:
+      - name: valkey
+        image: valkey/valkey:7.2
+        command:
+        - sh
+        - -c
+        - |
+          if [ "$ENABLE_REDIS_EMPTY_PASSWORD" = "true" ]; then
+            exec valkey-server
+          else
+            exec valkey-server --requirepass "$REDIS_PASSWORD"
+          fi
+        env:
+        - name: ENABLE_REDIS_EMPTY_PASSWORD
+          value: "false"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: REDIS_PASSWORD
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: misp-redis-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: misp-redis-pvc
+  namespace: soc
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: local-path
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misp-redis
+  namespace: soc
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: misp-redis
+
+---
+# MariaDB
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misp-db
+  namespace: soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: misp-db
+  template:
+    metadata:
+      labels:
+        app: misp-db
+    spec:
+      containers:
+      - name: mariadb
+        image: mariadb:10.11
+        env:
+        - name: MYSQL_DATABASE
+          value: misp
+        - name: MYSQL_USER
+          value: misp
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: MYSQL_PASSWORD
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: MYSQL_ROOT_PASSWORD
+        args:
+        - "--innodb-buffer-pool-size=2048M"
+        - "--innodb-change-buffering=none"
+        - "--innodb-io-capacity=1000"
+        - "--innodb-io-capacity-max=2000"
+        - "--innodb-log-file-size=600M"
+        - "--innodb-read-io-threads=16"
+        - "--innodb-stats-persistent=ON"
+        - "--innodb-write-io-threads=4"
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: misp-mysql-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: misp-mysql-pvc
+  namespace: soc
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local-path
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misp-db
+  namespace: soc
+spec:
+  ports:
+  - port: 3306
+    targetPort: 3306
+  selector:
+    app: misp-db
+
+---
+# MISP Core
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misp-core
+  namespace: soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: misp-core
+  template:
+    metadata:
+      labels:
+        app: misp-core
+    spec:
+      containers:
+      - name: misp-core
+        image: ghcr.io/misp/misp-docker/misp-core:latest
+        ports:
+        - containerPort: 80
+        - containerPort: 443
+        envFrom:
+        - secretRef:
+            name: misp-secrets
+        env:
+        - name: MYSQL_HOST
+          value: misp-db
+        - name: MYSQL_PORT
+          value: "3306"
+        - name: REDIS_HOST
+          value: misp-redis
+        - name: REDIS_PORT
+          value: "6379"
+        - name: SMTP_FQDN
+          value: misp-mail
+        - name: SMTP_PORT
+          value: "25"
+        - name: PHP_MEMORY_LIMIT
+          value: "2048M"
+        - name: PHP_MAX_EXECUTION_TIME
+          value: "300"
+        - name: PHP_UPLOAD_MAX_FILESIZE
+          value: "50M"
+        - name: PHP_POST_MAX_SIZE
+          value: "50M"
+        - name: PHP_TIMEZONE
+          value: "UTC"
+        - name: BASE_URL
+          value: "http://192.168.200.37"
+        volumeMounts:
+        - name: misp-configs
+          mountPath: /var/www/MISP/app/Config
+        - name: misp-logs
+          mountPath: /var/www/MISP/app/tmp/logs
+        - name: misp-files
+          mountPath: /var/www/MISP/app/files
+        - name: misp-ssl
+          mountPath: /etc/nginx/certs
+        - name: misp-gnupg
+          mountPath: /var/www/MISP/.gnupg
+        - name: misp-database-config
+          mountPath: /var/www/MISP/app/Config/database.php
+          subPath: database.php
+ 
+        livenessProbe:
+          httpGet:
+            path: /users/heartbeat
+            port: 80
+          initialDelaySeconds: 120
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /users/heartbeat
+            port: 80
+          initialDelaySeconds: 120
+          periodSeconds: 30
+      volumes:
+      - name: misp-configs
+        persistentVolumeClaim:
+          claimName: misp-configs-pvc
+      - name: misp-logs
+        persistentVolumeClaim:
+          claimName: misp-logs-pvc
+      - name: misp-files
+        persistentVolumeClaim:
+          claimName: misp-files-pvc
+      - name: misp-ssl
+        persistentVolumeClaim:
+          claimName: misp-ssl-pvc
+      - name: misp-gnupg
+        persistentVolumeClaim:
+          claimName: misp-gnupg-pvc
+      - name: misp-database-config
+        configMap:
+          name: misp-database-config
+   
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misp-core
+  namespace: soc
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.37
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  - port: 443
+    targetPort: 443
+    name: https
+  selector:
+    selector:
+    app: misp-core
+
+---
+# PVCs for MISP volumes
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: misp-configs-pvc
+  namespace: soc
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: local-path
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: misp-logs-pvc
+  namespace: soc
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: local-path
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: misp-files-pvc
+  namespace: soc
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local-path
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: misp-ssl-pvc
+  namespace: soc
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: local-path
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: misp-gnupg-pvc
+  namespace: soc
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: local-path
+
+---
+# MISP Modules
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misp-modules
+  namespace: soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: misp-modules
+  template:
+    metadata:
+      labels:
+        app: misp-modules
+    spec:
+      containers:
+      - name: misp-modules
+        image: ghcr.io/misp/misp-docker/misp-modules:latest
+        ports:
+        - containerPort: 6666
+        livenessProbe:
+          tcpSocket:
+            port: 6666
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 6666
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        volumeMounts:
+        - name: custom-action
+          mountPath: /custom/action_mod
+        - name: custom-expansion
+          mountPath: /custom/expansion
+        - name: custom-export
+          mountPath: /custom/export_mod
+        - name: custom-import
+          mountPath: /custom/import_mod
+      volumes:
+      - name: custom-action
+        emptyDir: {}
+      - name: custom-expansion
+        emptyDir: {}
+      - name: custom-export
+        emptyDir: {}
+      - name: custom-import
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misp-modules
+  namespace: soc
+spec:
+  ports:
+  - port: 6666
+    targetPort: 6666
+  selector:
+    app: misp-modules
+
+---
+# MISP Guard
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misp-guard
+  namespace: soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: misp-guard
+  template:
+    metadata:
+      labels:
+        app: misp-guard
+    spec:
+      containers:
+      - name: misp-guard
+        image: ghcr.io/misp/misp-docker/misp-guard:latest
+        ports:
+        - containerPort: 8888
+        env:
+        - name: GUARD_PORT
+          value: "8888"
+        - name: GUARD_ARGS
+          value: ""
+        livenessProbe:
+          tcpSocket:
+            port: 8888
+          initialDelaySeconds: 10
+          periodSeconds: 120
+        readinessProbe:
+          tcpSocket:
+            port: 8888
+          initialDelaySeconds: 10
+          periodSeconds: 120
+        volumeMounts:
+        - name: guard-config
+          mountPath: /config.json
+          subPath: config.json
+      volumes:
+      - name: guard-config
+        configMap:
+          name: misp-guard-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misp-guard
+  namespace: soc
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8888
+    targetPort: 8888
+  selector:
+    app: misp-guard
+
+---
+# ConfigMap for Guard
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: misp-guard-config
+  namespace: soc
+data:
+  config.json: |
+    {
+      "listen": "0.0.0.0:8888",
+      "allowlist": {
+        "urls": [],
+        "domains": []
+      },
+      "compartments_rules": {
+        "can_reach": {
+          "default": ["default"]
+        }
+      },
+      "instances": {
+        "misp_container": {
+          "ip": "10.43.123.229",
+          "host": "misp-core.soc.svc.cluster.local",
+          "port": 443,
+          "compartment_id": "default",
+          "affiliation": "SOC",
+          "taxonomies_rules": {
+            "required_taxonomies": [],
+            "allowed_tags": {},
+            "blocked_tags": []
+          },
+          "blocked_distribution_levels": [],
+          "blocked_sharing_groups_uuids": [],
+          "blocked_attribute_types": [],
+          "blocked_attribute_categories": [],
+          "blocked_object_types": []
+        }
+      }
+    }

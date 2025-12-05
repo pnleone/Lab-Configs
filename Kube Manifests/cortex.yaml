@@ -153,13 +153,16 @@ spec:
               mountPath: /opt/cortex/analyzers
             - name: cortex-shared-fs-claim
               mountPath: /opt/cortex/shared
-            - name: config
-              mountPath: /etc/cortex/conf
+            # Mount ConfigMap directly as application.conf
+            - name: cortex-config
+              mountPath: /opt/cortex/conf/application.conf
+              subPath: application.conf
             - name: python-libs
               mountPath: /usr/local/lib/python3.11/site-packages
             - name: cortex-virustotal-config
               mountPath: /opt/cortex/analyzers/virustotal
               readOnly: true
+
 
           startupProbe:
             tcpSocket:
@@ -200,7 +203,7 @@ spec:
         - name: cortex-shared-fs-claim
           persistentVolumeClaim:
             claimName: cortex-shared-fs-claim
-        - name: config
+        - name: cortex-config
           configMap:
             name: cortex-config
         - name: python-libs

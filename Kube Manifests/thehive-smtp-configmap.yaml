@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: thehive-config
+  namespace: soc
+data:
+  application.conf: |
+    play.modules.enabled += org.thp.thehive.connector.misp.MispModule
+    mailer {
+      type = smtp
+      host = "192.168.200.38"
+      port = 25
+      from = "thehive-alerts@gmail.com"
+    }

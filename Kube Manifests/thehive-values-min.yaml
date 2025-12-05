@@ -1,11 +1,23 @@
 # Top-level image pull secrets
+
+
+
 imagePullSecrets:
   - name: thehive-secrets
 
-thehive:
-  minio:
-    enabled: false
 
+minio:
+  enabled: false
+
+thehive:
+  config: |
+    play.modules.enabled += org.thp.thehive.connector.misp.MispModule
+    mailer {
+      type = smtp
+      host = "192.168.200.38"
+      port = 25
+      from = "pnleone17@gmail.com"
+    }
   jvmOpts: "-Xms2g -Xmx2g -Xmn300m"
 
   # --- Storage (Cloudflare R2 S3) ---
@@ -40,6 +52,16 @@ thehive:
     api_keys: []   # leave blank, chart will pull from secret
     k8sSecretName: "thehive-secrets"
     k8sSecretKey: "CORTEX_API_KEY"
+
+  misp:
+    enabled: true
+    protocol: "http"                # or "https" if TLS enabled
+    hostnames:
+      - "192.168.200.37" # or external MISP hostname/IP
+    port: 80                         # 443 if HTTPS
+    k8sSecretName: "thehive-secrets"
+    k8sSecretKey: "MISP_API_KEY"
+
 
 # --- Persistence volumes ---
 persistence:
