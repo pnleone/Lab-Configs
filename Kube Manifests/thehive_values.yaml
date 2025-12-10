@@ -1,9 +1,12 @@
-# values.yaml for TheHive Helm chart
+################################
+# TheHive Helm Chart variables #
+################################
 
 nameOverride: ""
 fullnameOverride: ""
 
-imagePullSecrets: []
+# imagePullSecrets:
+#   - name: thehive-secrets
 
 thehive:
   replicas: 1
@@ -18,105 +21,151 @@ thehive:
       memory: "3584Mi"
       ephemeral-storage: "4Gi"
 
-  jvmOpts: "-Xms1g -Xmx2g -Xmn300m"
+  jvmOpts: "-Xms2g -Xmx2g -Xmn300m"
 
   image:
     registry: docker.io
     repository: strangebee/thehive
-    tag: "5.5"
+    tag: "5.5.13-1"
     pullPolicy: IfNotPresent
 
-  # --- Database (Cassandra, no auth required) ---
-  database:
-    username: ""        # not required
-    password: ""        # not required
-    k8sSecretName: ""   # not required
-    k8sSecretKey: ""    # not required
-    hostnames:
-      - "cassandra.soc.svc.cluster.local"
-    wait: false
-
-  # --- Index (Elasticsearch, no auth required) ---
-  index:
-    username: ""        # not required
-    password: ""        # not required
-    k8sSecretName: ""   # not required
-    k8sSecretKey: ""    # not required
-    hostnames:
-      - "elasticsearch.soc.svc.cluster.local"
 
   # --- Storage (Cloudflare R2 S3) ---
   storage:
-    k8sSecretName: "thehive-secrets"
-    k8sSecretKey: "S3_SECRET_KEY"
+    # k8sSecretName: "thehive-secrets"
+    # k8sSecretKey: "S3_SECRET_KEY"
+    accesskey: "0c790523a990c5043bddac7e19f8faba"
+    secretKey: "de590a0ff35aa48035574cc2017d8a48c493b1b1b549892e062f59a4536246da"
     endpoint: "https://bf6d65d7b59cef1c2543a0b2a855b207.r2.cloudflarestorage.com"
     bucket: "thehive"
     region: "auto"
-    usePathAccessStyle: false
+    usePathAccessStyle: true
 
   # --- HTTP secret ---
-  httpSecret: ""   # leave blank, use secret
-  k8sSecretName: "thehive-secrets"
-  k8sSecretKey: "THEHIVE_HTTP_SECRET"
+  httpSecret: "fd652e1508816dc71964a8d57ae3d0ae051cf7e31308bd16cd161afe6d3d372d"
+  # k8sSecretName: "thehive-secrets"
+  # k8sSecretKey: "THEHIVE_HTTP_SECRET"
+# --- Cassandra ---
+  database:
+    hostnames:
+      - cassandra.soc.svc.cluster.local
+  #   password: "f3a9c7d1e8b24a5f9c6d7e2a1b0f4c8d7e9a2b5c6d1f8a3e4b7c9d0f2a6b8c1d"
+    # username: cassandra
+    # k8sSecretName: thehive-cassandra
+    # k8sSecretKey: cassandra-password
+    
 
+   # --- Elasticsearch ---
+  index:
+    hostnames:
+      - elasticsearch.soc.svc.cluster.local
+    # username: "elastic"
+    # # k8sSecretName: "thehive-secrets"
+    # # k8sSecretKey: "ELASTICSEARCH_PASSWORD"
+    # password: "a7d2f9c4e1b6d8a3c5f0b9e2d4c7a1f8b3e6d0c9a2f5b7d1c8e4a9f0b2d6c3e7"
+    
   # --- Cortex integration ---
   cortex:
     enabled: true
     protocol: "http"
     hostnames:
-      - "cortex.soc.svc.cluster.local"
-    port: 9001
-    api_keys: []   # leave blank, use secret
-    k8sSecretName: "thehive-secrets"
-    k8sSecretKey: "CORTEX_API_KEY"
+      - "192.168.1.89"
+    port: 9002
+    api_keys: 
+      - "m7LmyOfdnpo+jziHpthpcjRy/0oJYseF"
+    # k8sSecretName: "thehive-secrets"
+    # k8sSecretKey: "CORTEX_API_KEY"
 
-  # --- Custom application.conf (optional override) ---
-  configFile: |
-    include classpath("application.conf")
-    play.config.check = false
-    kamon { enabled = false }
-    notification.webhook.endpoints = []
+  # --- MISP integration ---
+  misp:
+    enabled: true
+    protocol: "http"
+    hostnames:
+      - "192.168.200.37"
+    port: 80
+    api_keys:
+      - "6cocd3ZHJYx2cZkzWOC6XB0gh8CLHEmu5pVVCPI4"
+    # k8sSecretName: "thehive-secrets"
+    # k8sSecretKey: "MISP_API_KEY"
 
-  # --- Monitoring (Kamon metrics port) ---
+  # --- Custom application.conf ---
+  # configFile: |
+  #   play.modules.enabled += org.thp.thehive.connector.misp.MispModule
+
+  #   mailer {
+  #     type = smtp
+  #     host = "192.168.200.38"
+  #     port = 25
+  #     from = "pnleone17@gmail.com"
+  #   }
+
+  #   misp {
+  #     url = "http://192.168.200.37"
+  #     key = ${?MISP_API_KEY}
+  #   }
+
+  #   cortex {
+  #     servers = [
+  #       {
+  #         name = "cortex0"
+  #         url = "http://192.168.1.89:9002"
+  #         key = ${?CORTEX_API_KEY}
+  #       }
+  #     ]
+  #   }
+
+  #   storage {
+  #     provider = s3
+  #     endpoint = "https://bf6d65d7b59cef1c2543a0b2a855b207.r2.cloudflarestorage.com"
+  #     bucket = "thehive"
+  #     region = "auto"
+  #     accessKey = ${?S3_ACCESS_KEY}
+  #     secretKey = ${?S3_SECRET_KEY}
+  #   }
+
+
+  # --- Service (LoadBalancer) ---
+  service:
+    type: LoadBalancer
+    loadBalancerIP: 192.168.200.33
+    ports:
+      - name: http
+        port: 9000
+        targetPort: 9000
+      - name: kamon
+        port: 9095
+        targetPort: 9095
+
   monitoring:
     enabled: true
     port: 9095
 
-  # --- Ingress (disabled, using LoadBalancer instead) ---
-  ingress:
-    enabled: false
-    className: ""
-    annotations: {}
-    hosts: []
-    tls: []
+  # --- PVCs ---
+  volumes:
+    - name: thehive-data
+      persistentVolumeClaim:
+        claimName: thehive-data-pvc
+    - name: thehive-index
+      persistentVolumeClaim:
+        claimName: thehive-index-pvc
 
-  # --- Extra volumes/mounts (optional) ---
-  volumes: []
-  volumeMounts: []
+  volumeMounts:
+    - name: thehive-data
+      mountPath: /opt/thehive/data
+    - name: thehive-index
+      mountPath: /opt/thehive/index
 
-  # --- Scheduling hints ---
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
+cassandra:
+  enabled: false
 
-# --- Service override ---
-service:
-  type: LoadBalancer
-  loadBalancerIP: 192.168.200.33
-  ports:
-    - name: http
-      port: 9000
-      targetPort: 9000
-    - name: kamon
-      port: 9095
-      targetPort: 9095
 
-# --- Persistence volumes ---
-persistence:
-  data:
-    enabled: true
-    existingClaim: thehive-data-pvc
-  index:
-    enabled: true
-    existingClaim: thehive-index-pvc
+elasticsearch:
+  enabled: false
+  # security:
+  #   elasticPassword: "a7d2f9c4e1b6d8a3c5f0b9e2d4c7a1f8b3e6d0c9a2f5b7d1c8e4a9f0b2d6c3e7"
 
+  # extraEnvVars:
+  #   - name: "ES_JAVA_OPTS"
+  #     value: "-Des.cluster.routing.allocation.disk.watermark.low=70% -Des.cluster.routing.allocation.disk.watermark.high=80% -Des.cluster.routing.allocation.disk.watermark.flood_stage=95% -Des.cluster.routing.allocation.disk.watermark.max_headroom=20gb"
+minio:
+  enabled: false

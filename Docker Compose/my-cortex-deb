@@ -1,0 +1,57 @@
+# Start from official Cortex base image 
+FROM thehiveproject/cortex:4.0 
+
+# Switch to root for installs 
+USER root 
+
+# Install required system packages for analyzers/responders 
+RUN apt-get update && \ 
+apt-get install -y --no-install-recommends \ 
+    python3-pip \ 
+    python3-dev \ 
+    python3-venv \ 
+    python3-setuptools \ 
+    ssdeep \ 
+    libfuzzy-dev \ 
+    libfuzzy2 \ 
+    libimage-exiftool-perl \ 
+    libmagic1 \ 
+    build-essential \ 
+    git \ 
+    libssl-dev \ 
+    libffi-dev \ 
+    libxml2 \ 
+    libxslt1-dev \ 
+    libjpeg-dev \ 
+    zlib1g-dev \ 
+    libpq-dev \ 
+    curl \ 
+     qunzip && \ 
+rm -rf /var/lib/apt/lists/* 
+
+# Upgrade pip/setuptools/wheel and install cortexutils 
+RUN pip3 install --upgrade pip setuptools wheel && \ 
+    pip3 install cortexutils 
+    
+# Clone analyzers and responders into /opt/cortex 
+RUN set -ex && \ 
+    if [ -d /opt/cortex/analyzers/.git ]; then \ 
+        cd /opt/cortex/analyzers && git pull; \ 
+    else \ 
+        git clone https://github.com/TheHive-Project/Cortex-Analyzers.git /opt/cortex/analyzers; \ 
+    fi && \ if [ -d /opt/cortex/responders/.git ]; then \ 
+        cd /opt/cortex/responders && git pull; \ 
+    else \ 
+        git clone https://github.com/TheHive-Project/Cortex-Responders.git /opt/cortex/responders; \ 
+    fi && \ 
+    for I in $(find /opt/cortex/analyzers -name 'requirements.txt'); do pip3 install -r $I || true; done && \ 
+    for I in $(find /opt/cortex/responders -name 'requirements.txt'); do pip3 install -r $I || true; done && \ 
+    chown -R 1000:1000 /opt/cortex/analyzers /opt/cortex/responders 
+
+# Drop back to Cortex user 
+USER 1000 
+
+# Expose Cortex port 
+EXPOSE 9001 
+# Default command 
+CMD ["/opt/cortex/bin/cortex"]

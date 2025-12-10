@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: msmtp-relay
+  namespace: soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: msmtp-relay
+  template:
+    metadata:
+      labels:
+        app: msmtp-relay
+    spec:
+      containers:
+      - name: msmtp
+        image: alpine:latest
+        command: ["sh", "-c"]
+        args:
+          - |
+            apk add --no-cache msmtp ca-certificates && \
+            echo "defaults" > /etc/msmtprc && \
+            echo "auth           on" >> /etc/msmtprc && \
+            echo "tls            on" >> /etc/msmtprc && \
+            echo "tls_trust_file /etc/ssl/certs/ca-certificates.crt" >> /etc/msmtprc && \
+            echo "account gmail" >> /etc/msmtprc && \
+            echo "host smtp.gmail.com" >> /etc/msmtprc && \
+            echo "port 587" >> /etc/msmtprc && \
+            echo "user $GMAIL_USER" >> /etc/msmtprc && \
+            echo "password $GMAIL_PASSWORD" >> /etc/msmtprc && \
+            echo "from $GMAIL_USER" >> /etc/msmtprc && \
+            echo "account default : gmail" >> /etc/msmtprc && \
+            msmtpd --interface=0.0.0.0 --port=25
+
+        env:
+        - name: GMAIL_USER
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: GMAIL_USER
+        - name: GMAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: GMAIL_PASSWORD
+        ports:
+        - containerPort: 25
+          name: smtp-relay
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: msmtp-relay
+  namespace: soc
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.39
+  ports:
+  - port: 25
+    targetPort: 25
+    protocol: TCP
+    name: smtp-relay
+  selector:
+    app: msmtp-relay

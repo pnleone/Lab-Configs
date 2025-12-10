@@ -18,3 +18,5 @@ Kube Manifests/virustotal-secret.yaml
 Kube Manifests/cortex-http-secret.yaml
 Kube Manifests/thehive-secrets.yaml
 Kube Manifests/thehive-smtp-secret
+Kube Manifests/postfix.yaml
+Kube Manifests/thehive-config.yaml

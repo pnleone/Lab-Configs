@@ -11,7 +11,7 @@ metadata:
   namespace: soc
 data:
   application.conf: |
-    play {
+   play {
       http {
         port = 9001
         secret.key = ${?CORTEX_HTTP_SECRET}
@@ -20,22 +20,41 @@ data:
       http.parser.maxMemoryBuffer = 100MB
     }
 
-    search {
-      host = ["http://elasticsearch.soc.svc.cluster.local:9200"]
-      index = cortex
-    }
+    cortex {
+      analyzer {
+          # Directory that holds analyzers
+        urls = [
+          "https://catalogs.download.strangebee.com/latest/json/analyzers.json",
+          "/opt/cortex/analyzers" 
+        ]
 
-    analyzer {
-      urls = ["https://catalogs.download.strangebee.com/latest/json/analyzers.json"]
-      path = "/opt/cortex/analyzers"
-    }
+        fork-join-executor {
+          # Min number of threads available for analyze
+          parallelism-min = 2
+          # Parallelism (threads) ... ceil(available processors * factor)
+          parallelism-factor = 2.0
+          # Max number of threads available for analyze
+          parallelism-max = 4
+        }
+      }
 
-    responder {
-      urls = ["https://catalogs.download.strangebee.com/latest/json/responders.json"]
-      path = "/opt/cortex/responders"
-    }
-    
-    job.runner = process
+      responder {
+        # Directory that holds responders
+        urls = [
+          "https://catalogs.download.strangebee.com/latest/json/responders.json",
+          "/opt/cortex/responders"
+        ]
+
+        fork-join-executor {
+          # Min number of threads available for analyze
+          parallelism-min = 2
+          # Parallelism (threads) ... ceil(available processors * factor)
+          parallelism-factor = 2.0
+          # Max number of threads available for analyze
+          parallelism-max = 4
+        }
+      }
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -78,6 +97,19 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: cortex-shared-fs-claim
+  namespace: soc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: synology-nfs-sc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cortex-responders-pvc
   namespace: soc
 spec:
   accessModes:
@@ -162,7 +194,8 @@ spec:
             - name: cortex-virustotal-config
               mountPath: /opt/cortex/analyzers/virustotal
               readOnly: true
-
+            - name: cortex-responders-pvc
+              mountPath: /opt/cortex/responders
 
           startupProbe:
             tcpSocket:
@@ -187,12 +220,50 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 5
-        - name: python3-sidecar
-          image: python:3.11
-          command: ["sleep", "infinity"]
+        # - name: python3-sidecar
+        #   image: python:3.11
+        #   command: ["sleep", "infinity"]
+        #   volumeMounts:
+        #     - name: cortex-analyzers-pvc
+        #       mountPath: /opt/cortex/analyzers
+        #        Sidecar to pull analyzers and responders
+        - name: cortex-sidecar
+          image: python:3.11-slim
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              set -ex
+
+              # Clone or update analyzers
+              if [ -d /opt/cortex/analyzers/.git ]; then
+                cd /opt/cortex/analyzers && git pull
+              else
+                git clone https://github.com/TheHive-Project/Cortex-Analyzers.git /opt/cortex/analyzers
+              fi
+
+              # Clone or update responders
+              if [ -d /opt/cortex/responders/.git ]; then
+                cd /opt/cortex/responders && git pull
+              else
+                git clone https://github.com/TheHive-Project/Cortex-Responders.git /opt/cortex/responders
+              fi
+
+              # # Install Python dependencies for analyzers/responders
+              # for I in $(find /opt/cortex/analyzers -name 'requirements.txt'); do pip3 install -r $I || true; done
+              # for I in $(find /opt/cortex/responders -name 'requirements.txt'); do pip3 install -r $I || true; done
+
+              # # Fix ownership so Cortex (UID 1000) can access
+              # chown -R 1000:1000 /opt/cortex/analyzers /opt/cortex/responders
+
+              # # Keep container alive if you want it running
+              # tail -f /dev/null
           volumeMounts:
             - name: cortex-analyzers-pvc
               mountPath: /opt/cortex/analyzers
+            - name: cortex-responders-pvc
+              mountPath: /opt/cortex/responders
+
+    
       volumes:
         - name: cortex-data-pvc
           persistentVolumeClaim:
@@ -211,6 +282,10 @@ spec:
         - name: cortex-virustotal-config
           configMap:
             name: cortex-virustotal-config
+        - name: cortex-responders-pvc
+          persistentVolumeClaim:
+            claimName: cortex-responders-pvc
+
 ---
 apiVersion: v1
 kind: Service

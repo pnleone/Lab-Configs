@@ -27,6 +27,8 @@ thehive:
     endpoint: "https://bf6d65d7b59cef1c2543a0b2a855b207.r2.cloudflarestorage.com"
     bucket: "thehive"
     region: "auto"
+    usePathAccessStyle: true
+
   startupProbe:
       tcpSocket:
         port: http   # maps to 9000
@@ -35,8 +37,7 @@ thehive:
       timeoutSeconds: 2         # allow 2s per probe
       failureThreshold: 36      # allow ~6 minutes before giving up
 
-  # --- HTTP secret ---
-  thehive:
+  
   # --- HTTP secret ---
   httpSecret: ""   # leave blank, chart will pull from secret
   k8sSecretName: "thehive-secrets"
@@ -47,8 +48,8 @@ thehive:
     enabled: true
     protocol: "http"
     hostnames:
-      - "cortex.soc.svc.cluster.local"
-    port: 9001
+      - "192.168.1.89"
+    port: 9002
     api_keys: []   # leave blank, chart will pull from secret
     k8sSecretName: "thehive-secrets"
     k8sSecretKey: "CORTEX_API_KEY"
@@ -65,9 +66,16 @@ thehive:
 
 # --- Persistence volumes ---
 persistence:
-  data:
-    enabled: true
-    existingClaim: thehive-data-pvc
-  index:
-    enabled: true
-    existingClaim: thehive-index-pvc
+  volumes:
+    - name: thehive-data
+      persistentVolumeClaim:
+        claimName: thehive-data-pvc
+    - name: thehive-index
+      persistentVolumeClaim:
+        claimName: thehive-index-pvc
+
+  volumeMounts:
+    - name: thehive-data
+      mountPath: /opt/thehive/data
+    - name: thehive-index
+      mountPath: /opt/thehive/index

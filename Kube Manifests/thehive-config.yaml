@@ -5,25 +5,59 @@ metadata:
   namespace: soc
 data:
   application.conf: |
+    include classpath("application.conf")
+    
+    # Database and index configuration
+    db.janusgraph {
+      storage {
+        backend = cql
+        hostname = ["cassandra.soc.svc.cluster.local"]
+        cql {
+          cluster-name = "TheHiveCluster"
+          keyspace = thehive
+          read-consistency-level = ONE
+          write-consistency-level = ONE
+        }
+      }
+      
+      ## Index configuration
+      index.search {
+        backend = elasticsearch
+        hostname = ["elasticsearch.soc.svc.cluster.local"]
+        index-name = thehive
+      }
+    }
+    
+    # Storage configuration (Cloudflare R2)
     storage {
       provider = s3
       s3 {
         endpoint = "https://bf6d65d7b59cef1c2543a0b2a855b207.r2.cloudflarestorage.com"
-        accessKey = ${S3_ACCESS_KEY}
-        secretKey = ${S3_SECRET_KEY}
-        bucket = "thehive"
         region = "auto"
+        bucket = "thehive"
+        access-key = "0c790523a990c5043bddac7e19f8faba"
+        secret-key = "de590a0ff35aa48035574cc2017d8a48c493b1b1b549892e062f59a4536246da"
       }
     }
+    
+    # Cortex integration
+    play.modules.enabled += org.thp.thehive.connector.cortex.CortexModule
     cortex {
       servers = [
         {
           name = "cortex"
-          url = "http://cortex.soc.svc.cluster.local:9001"
+          url = "http://192.168.1.89:9002"
           auth {
             type = "bearer"
-            key = ${CORTEX_API_KEY}
+            key = "m7LmyOfdnpo+jziHpthpcjRy/0oJYseF"
           }
+          wsConfig {}
         }
       ]
+      refreshDelay = 5 seconds
+      maxRetryOnError = 3
+      statusCheckInterval = 1 minute
     }
+    
+    # Email configuration
+    notification.webhook.endpoints = []

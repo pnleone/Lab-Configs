@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misp-mail
+  namespace: soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: misp-mail
+  template:
+    metadata:
+      labels:
+        app: misp-mail
+    spec:
+      containers:
+      - name: smtp
+        image: registry.gitlab.com/egos-tech/smtp:latest
+        env:
+        # Gmail relay credentials
+        - name: GMAIL_USER
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: GMAIL_USER
+        - name: GMAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: GMAIL_PASSWORD
+
+        # Force Gmail relay host/port (implicit TLS)
+        - name: SMARTHOST_ADDRESS
+          value: "smtp.gmail.com"
+        - name: SMARTHOST_PORT
+          value: "465"
+        - name: SMARTHOST_USER
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: GMAIL_USER
+        - name: SMARTHOST_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: misp-secrets
+              key: GMAIL_PASSWORD
+        - name: SMARTHOST_ALIASES
+          value: "*.gmail.com"
+
+        # Require TLS
+        - name: USE_TLS
+          value: "true"
+        - name: HOSTS_REQUIRE_TLS
+          value: "*"
+
+        # Internal relay networks (trusted subnets)
+        - name: RELAY_NETWORKS
+          value: ":192.168.0.0/16:10.0.0.0/8"
+
+        # Outgoing mail hostname
+        - name: MAILNAME
+          value: "thehive.local"
+
+        # Local domains Exim should accept
+        - name: OTHER_HOSTNAMES
+          value: "thehive.local:localhost"
+
+        # Disable IPv6 if not needed
+        - name: DISABLE_IPV6
+          value: "true"
+
+        # Listen on port 25 for internal hosts
+        - name: PORT
+          value: "25"
+
+        # Trust store arguments
+        - name: TLS_CA_FILE
+          value: "/etc/ssl/certs/ca-certificates.crt"
+        - name: TLS_VERIFY_CERTIFICATES
+          value: "true"
+
+        ports:
+        - containerPort: 25
+          name: smtp-internal
+        volumeMounts:
+        - name: ca-certs
+          mountPath: /etc/ssl/certs
+          readOnly: true
+      volumes:
+      - name: ca-certs
+        hostPath:
+          path: /etc/ssl/certs
+          type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misp-mail
+  namespace: soc
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.38
+  ports:
+  - port: 25
+    targetPort: 25
+    protocol: TCP
+    name: smtp-internal
+  selector:
+    app: misp-mail
