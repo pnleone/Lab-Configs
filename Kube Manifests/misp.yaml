@@ -71,7 +71,7 @@ data:
             'persistent' => false,
             'host' => 'misp-db',
             'login' => 'misp',
-            'password' => 'dMdrTN1hCz56B4sWXM0aXQ77p+p0OqKhH0/ZTMV7a5o=',
+            'password' => '',
             'database' => 'misp',
             'prefix' => '',
             'encoding' => 'utf8',
