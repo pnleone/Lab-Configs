@@ -34,15 +34,15 @@ thehive:
   storage:
     # k8sSecretName: "thehive-secrets"
     # k8sSecretKey: "S3_SECRET_KEY"
-    accesskey: "0c790523a990c5043bddac7e19f8faba"
-    secretKey: "de590a0ff35aa48035574cc2017d8a48c493b1b1b549892e062f59a4536246da"
+    accesskey: ""
+    secretKey: ""
     endpoint: "https://bf6d65d7b59cef1c2543a0b2a855b207.r2.cloudflarestorage.com"
     bucket: "thehive"
     region: "auto"
     usePathAccessStyle: true
 
   # --- HTTP secret ---
-  httpSecret: "fd652e1508816dc71964a8d57ae3d0ae051cf7e31308bd16cd161afe6d3d372d"
+  httpSecret: ""
   # k8sSecretName: "thehive-secrets"
   # k8sSecretKey: "THEHIVE_HTTP_SECRET"
 # --- Cassandra ---
@@ -72,7 +72,7 @@ thehive:
       - "192.168.1.89"
     port: 9002
     api_keys: 
-      - "m7LmyOfdnpo+jziHpthpcjRy/0oJYseF"
+      - ""
     # k8sSecretName: "thehive-secrets"
     # k8sSecretKey: "CORTEX_API_KEY"
 
@@ -84,7 +84,7 @@ thehive:
       - "192.168.200.37"
     port: 80
     api_keys:
-      - "6cocd3ZHJYx2cZkzWOC6XB0gh8CLHEmu5pVVCPI4"
+      - ""
     # k8sSecretName: "thehive-secrets"
     # k8sSecretKey: "MISP_API_KEY"
 
