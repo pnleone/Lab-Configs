@@ -63,7 +63,7 @@ spec:
         - name: POSTGRES_USER
           value: patchmon_user
         - name: POSTGRES_PASSWORD
-          value: a9X4b7Y2m6Q8z1N5w3R0c8T7d2L9h4J6
+          value: 
         livenessProbe:
           exec:
             command: ["pg_isready","-U","patchmon_user","-d","patchmon_db"]
