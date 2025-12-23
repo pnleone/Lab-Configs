@@ -35,8 +35,8 @@ data:
         endpoint = "https://bf6d65d7b59cef1c2543a0b2a855b207.r2.cloudflarestorage.com"
         region = "auto"
         bucket = "thehive"
-        access-key = "0c790523a990c5043bddac7e19f8faba"
-        secret-key = "de590a0ff35aa48035574cc2017d8a48c493b1b1b549892e062f59a4536246da"
+        access-key = ""
+        secret-key = ""
       }
     }
     
