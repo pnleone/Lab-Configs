@@ -49,7 +49,7 @@ thehive:
   database:
     hostnames:
       - cassandra.soc.svc.cluster.local
-  #   password: "f3a9c7d1e8b24a5f9c6d7e2a1b0f4c8d7e9a2b5c6d1f8a3e4b7c9d0f2a6b8c1d"
+  #   password: ""
     # username: cassandra
     # k8sSecretName: thehive-cassandra
     # k8sSecretKey: cassandra-password
@@ -62,7 +62,7 @@ thehive:
     # username: "elastic"
     # # k8sSecretName: "thehive-secrets"
     # # k8sSecretKey: "ELASTICSEARCH_PASSWORD"
-    # password: "a7d2f9c4e1b6d8a3c5f0b9e2d4c7a1f8b3e6d0c9a2f5b7d1c8e4a9f0b2d6c3e7"
+    # password: ""
     
   # --- Cortex integration ---
   cortex:
@@ -162,7 +162,7 @@ cassandra:
 elasticsearch:
   enabled: false
   # security:
-  #   elasticPassword: "a7d2f9c4e1b6d8a3c5f0b9e2d4c7a1f8b3e6d0c9a2f5b7d1c8e4a9f0b2d6c3e7"
+  #   elasticPassword: ""
 
   # extraEnvVars:
   #   - name: "ES_JAVA_OPTS"
