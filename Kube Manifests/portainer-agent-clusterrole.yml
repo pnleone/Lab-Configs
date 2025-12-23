@@ -8,6 +8,7 @@ rules:
       - namespaces
       - namespaces/status
       - nodes
+      - nodes/proxy
       - pods
       - services
       - endpoints

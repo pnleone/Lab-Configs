@@ -1,0 +1,274 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: server-admin
+---
+# Postgres PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: patchmon-postgres-pvc
+  namespace: server-admin
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local-path
+---
+# Redis PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: patchmon-redis-pvc
+  namespace: server-admin
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-path
+---
+# Postgres Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patchmon-database
+  namespace: server-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patchmon-database
+  template:
+    metadata:
+      labels:
+        app: patchmon-database
+    spec:
+      initContainers:
+      - name: init-chown
+        image: busybox
+        command: ["sh", "-c", "chown -R 999:999 /var/lib/postgresql/data"]
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+      containers:
+      - name: database
+        image: postgres:17-alpine
+        env:
+        - name: POSTGRES_DB
+          value: patchmon_db
+        - name: POSTGRES_USER
+          value: patchmon_user
+        - name: POSTGRES_PASSWORD
+          value: a9X4b7Y2m6Q8z1N5w3R0c8T7d2L9h4J6
+        livenessProbe:
+          exec:
+            command: ["pg_isready","-U","patchmon_user","-d","patchmon_db"]
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command: ["pg_isready","-U","patchmon_user","-d","patchmon_db"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+          subPath: data
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: patchmon-postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patchmon-database
+  namespace: server-admin
+spec:
+  selector:
+    app: patchmon-database
+  ports:
+  - port: 5432
+    targetPort: 5432
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patchmon-redis
+  namespace: server-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patchmon-redis
+  template:
+    metadata:
+      labels:
+        app: patchmon-redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        command: ["redis-server","--requirepass","R8m2T7y4N9q6L3b1X5z0C8v7K2w4H6d9","--appendonly","yes"]
+        livenessProbe:
+          exec:
+            command: ["redis-cli","-a","R8m2T7y4N9q6L3b1X5z0C8v7K2w4H6d9","ping"]
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command: ["redis-cli","-a","R8m2T7y4N9q6L3b1X5z0C8v7K2w4H6d9","ping"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: patchmon-redis-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patchmon-redis
+  namespace: server-admin
+spec:
+  selector:
+    app: patchmon-redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+---
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patchmon-backend
+  namespace: server-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patchmon-backend
+  template:
+    metadata:
+      labels:
+        app: patchmon-backend
+    spec:
+      containers:
+      - name: backend
+        image: ghcr.io/patchmon/patchmon-backend:latest
+        env:
+        - name: LOG_LEVEL
+          value: info
+        - name: DATABASE_URL
+          value: postgresql://patchmon_user:a9X4b7Y2m6Q8z1N5w3R0c8T7d2L9h4J6@patchmon-database:5432/patchmon_db
+        - name: JWT_SECRET
+          value: J4n7Q2x9M6c1V8b5T0r3L6y8Z2p5W9h3
+        - name: SERVER_PORT
+          value: "3001"
+        - name: CORS_ORIGIN
+          value: "http://192.168.200.35:3000"
+        - name: REDIS_HOST
+          value: patchmon-redis
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_PASSWORD
+          value: R8m2T7y4N9q6L3b1X5z0C8v7K2w4H6d9
+        - name: REDIS_DB
+          value: "0"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patchmon-backend
+  namespace: server-admin
+spec:
+  selector:
+    app: patchmon-backend
+  ports:
+  - port: 3001
+    targetPort: 3001
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patchmon-frontend
+  namespace: server-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patchmon-frontend
+  template:
+    metadata:
+      labels:
+        app: patchmon-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ghcr.io/patchmon/patchmon-frontend:latest
+        env:
+        - name: BACKEND_HOST
+          value: patchmon-backend
+        - name: BACKEND_PORT
+          value: "3001"
+        livenessProbe:
+          httpGet:
+            path: /index.html
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patchmon-frontend
+  namespace: server-admin
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.35
+  selector:
+    app: patchmon-frontend
+  ports:
+  - port: 3000
+    targetPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patchmon-backend-lb
+  namespace: server-admin
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.39
+  selector:
+    app: patchmon-backend
+  ports:
+  - port: 3001
+    targetPort: 3001

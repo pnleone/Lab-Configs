@@ -3,12 +3,12 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 # SMTP relay details
-smtp_server = "192.168.200.38"
+smtp_server = "192.168.1.89"
 smtp_port = 25
 
 # Email addresses
-from_addr = "pnleone17@gmail.com"
-to_addr = "pnleone17@gmail.com"
+from_addr = "shad0w1t1a6@gmail.com"
+to_addr = "shad0w1t1a6@gmail.com"
 
 # Create the message container
 msg = MIMEMultipart("alternative")
