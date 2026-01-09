@@ -63,7 +63,7 @@ spec:
         - name: POSTGRES_USER
           value: patchmon_user
         - name: POSTGRES_PASSWORD
-          value: a9X4b7Y2m6Q8z1N5w3R0c8T7d2L9h4J6
+          value: 
         livenessProbe:
           exec:
             command: ["pg_isready","-U","patchmon_user","-d","patchmon_db"]
@@ -170,7 +170,7 @@ spec:
         - name: DATABASE_URL
           value: postgresql://patchmon_user:a9X4b7Y2m6Q8z1N5w3R0c8T7d2L9h4J6@patchmon-database:5432/patchmon_db
         - name: JWT_SECRET
-          value: J4n7Q2x9M6c1V8b5T0r3L6y8Z2p5W9h3
+          value: 
         - name: SERVER_PORT
           value: "3001"
         - name: CORS_ORIGIN
@@ -180,7 +180,7 @@ spec:
         - name: REDIS_PORT
           value: "6379"
         - name: REDIS_PASSWORD
-          value: R8m2T7y4N9q6L3b1X5z0C8v7K2w4H6d9
+          value: 
         - name: REDIS_DB
           value: "0"
         livenessProbe:
