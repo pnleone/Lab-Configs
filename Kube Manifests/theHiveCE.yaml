@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thehive
+  namespace: soc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thehive
+  template:
+    metadata:
+      labels:
+        app: thehive
+    spec:
+      initContainers:
+        - name: check-cassandra
+          image: busybox
+          command: ['sh', '-c', 'until nc -z cassandra.soc.svc.cluster.local 9042; do echo waiting for cassandra; sleep 2; done']
+
+        - name: check-elasticsearch
+          image: busybox
+          command: ['sh', '-c', 'until nc -z elasticsearch.soc.svc.cluster.local 9200; do echo waiting for elasticsearch; sleep 2; done']
+
+      containers:
+        - name: thehive
+          image: docker.io/thehiveproject/thehive:3.5.2-1
+          imagePullPolicy: IfNotPresent
+
+          env:
+            # JVM
+            - name: JAVA_OPTS
+              value: "-Xms2g -Xmx2g -Xmn300m"
+
+            # Cassandra backend
+            - name: CASSANDRA_CONTACT_POINTS
+              value: "cassandra.soc.svc.cluster.local"
+
+            # Elasticsearch backend (CE 3.x expects ES 5/6)
+            - name: ELASTICSEARCH_URI
+              value: "http://elasticsearch.soc.svc.cluster.local:9200"
+
+            # HTTP secret (optional)
+            - name: THEHIVE_HTTP_SECRET
+              value: ""
+
+            # Cortex integration
+            - name: CORTEX_PROTOCOL
+              value: "http"
+            - name: CORTEX_SERVERS
+              value: "cortex1"
+            - name: CORTEX_cortex1_URL
+              value: "http://192.168.1.89:9002"
+            - name: CORTEX_cortex1_KEY
+              value: ""
+
+            # MISP integration
+            - name: MISP_ENABLED
+              value: "true"
+            - name: MISP_PROTOCOL
+              value: "http"
+            - name: MISP_SERVERS
+              value: "misp1"
+            - name: MISP_misp1_URL
+              value: "http://192.168.200.37:80"
+            - name: MISP_misp1_KEY
+              value: ""
+
+            # Monitoring (Kamon)
+            - name: KAMON_ENABLED
+              value: "true"
+            - name: KAMON_PORT
+              value: "9095"
+
+          ports:
+            - name: http
+              containerPort: 9000
+            - name: kamon
+              containerPort: 9095
+
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "2048Mi"
+              ephemeral-storage: "4Gi"
+            limits:
+              cpu: "3000m"
+              memory: "3584Mi"
+              ephemeral-storage: "4Gi"
+
+          volumeMounts:
+            - name: thehive-data
+              mountPath: /opt/thehive/data
+
+      volumes:
+        - name: thehive-data
+          persistentVolumeClaim:
+            claimName: thehive-data-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thehive
+  namespace: soc
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.200.33
+  selector:
+    app: thehive
+  ports:
+    - name: http
+      port: 9000
+      targetPort: 9000
+    - name: kamon
+      port: 9095
+      targetPort: 9095
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: thehive-data-pvc
+  namespace: soc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi

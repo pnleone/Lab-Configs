@@ -8,7 +8,7 @@ smtp_port = 25
 
 # Email addresses
 from_addr = "shad0w1t1a6@gmail.com"
-to_addr = "shad0w1t1a6@gmail.com"
+to_addr = "pnleone@shadowitlab.com"
 
 # Create the message container
 msg = MIMEMultipart("alternative")

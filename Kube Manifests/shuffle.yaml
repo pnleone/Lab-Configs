@@ -1,4 +1,4 @@
----
+# Secret for OpenSearch admin password
 apiVersion: v1
 kind: Secret
 metadata:
@@ -7,6 +7,17 @@ metadata:
 type: Opaque
 stringData:
   OPENSEARCH_INITIAL_ADMIN_PASSWORD: "Q9mA4frED343445GGrtg95d"
+
+---
+# Secret for GHCR registry authentication
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ghcr-secret
+  namespace: soc
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: eyJhdXRocyI6eyJnaGNyLmlvIjp7InVzZXJuYW1lIjoicG5sZW9uZSIsInBhc3N3b3JkIjoiZ2hwX0RZdWk5UWFxTld0aDB0TnpDdFhxSm5QcHk2NlVUUTJnNzNKNSIsImVtYWlsIjoicG5sZW9uZUBvdXRsb29rLmNvbSIsImF1dGgiOiJjRzVzWlc5dVpUcG5hSEJmUkZsMWFUbFJZWEZPVjNSb01IUk9la04wV0hGS2JsQndlVFkyVlZSUk1tYzNNMG8xIn19fQ==
 
 ---
 apiVersion: v1
@@ -22,22 +33,18 @@ metadata:
   name: shuffle-automation-role
   namespace: soc
 rules:
-  # Orborus must create/delete worker Jobs
   - apiGroups: ["batch"]
     resources: ["jobs"]
     verbs: ["create", "delete", "get", "list", "watch"]
 
-  # Workers must inspect their own pods
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list", "watch"]
 
-  # Workers + Orborus may read mounted ConfigMaps/Secrets
   - apiGroups: [""]
     resources: ["configmaps", "secrets"]
     verbs: ["get"]
 
-  # Reading events helps with debugging failures
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["list", "watch"]
@@ -88,7 +95,8 @@ spec:
         app: shuffle-frontend
     spec:
       serviceAccountName: shuffle-automation
-      
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
       - name: shuffle-frontend
         image: ghcr.io/shuffle/shuffle-frontend:latest
@@ -98,7 +106,6 @@ spec:
         env:
         - name: BACKEND_HOSTNAME
           value: "shuffle-backend"
-        
 
 ---
 apiVersion: v1
@@ -136,6 +143,8 @@ spec:
         app: shuffle-backend
     spec:
       serviceAccountName: shuffle-automation
+      imagePullSecrets:
+        - name: ghcr-secret
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -219,6 +228,8 @@ spec:
         app: shuffle-orborus
     spec:
       serviceAccountName: shuffle-automation
+      imagePullSecrets:
+        - name: ghcr-secret
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -238,20 +249,16 @@ spec:
           value: "http://shuffle-backend:5001"
         - name: DOCKER_API_VERSION
           value: "1.40"
-        # Kubernetes execution mode
         - name: RUNNING_MODE
           value: "kubernetes"
         - name: IS_KUBERNETES
           value: "true"
-        # Worker image for K8s mode
         - name: SHUFFLE_WORKER_IMAGE
-          value: "ghcr.io/shuffle/shuffle-worker-scale:nightly"
-        # Logging / stats
+          value: "ghcr.io/shuffle/shuffle-worker:nightly"
         - name: SHUFFLE_STATS_DISABLED
           value: "true"
         - name: SHUFFLE_LOGS_DISABLED
           value: "true"
-        # Cleanup behavior
         - name: CLEANUP
           value: "false"
         securityContext:
@@ -269,63 +276,9 @@ spec:
           type: Socket
 
 ---
-# Worker Job TEMPLATE for Orborus to clone in Kubernetes mode
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: shuffle-worker-template
-  namespace: soc
-  labels:
-    app: shuffle-worker
-spec:
-  template:
-    metadata:
-      labels:
-        app: shuffle-worker
-    spec:
-      serviceAccountName: shuffle-automation
-      restartPolicy: Never
-      securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-      containers:
-      - name: shuffle-worker
-        image: ghcr.io/shuffle/shuffle-worker-scale:nightly
-        imagePullPolicy: Always
-        env:
-        - name: BASE_URL
-          value: "http://shuffle-backend:5001"
-        # Kubernetes execution mode
-        - name: RUNNING_MODE
-          value: "kubernetes"
-        - name: IS_KUBERNETES
-          value: "true"
-        # Required for containerd via Docker API
-        - name: DOCKER_API_VERSION
-          value: "1.40"
-        # Worker behavior
-        - name: CLEANUP
-          value: "true"
-        - name: SHUFFLE_LOGS_DISABLED
-          value: "true"
-        - name: SHUFFLE_STATS_DISABLED
-          value: "true"
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
-          seccompProfile:
-            type: RuntimeDefault
-        volumeMounts:
-        - name: docker-sock
-          mountPath: /var/run/docker.sock
-      volumes:
-      - name: docker-sock
-        hostPath:
-          path: /run/k3s/containerd/containerd.sock
-          type: Socket
-
----
+# =========================
+# OpenSearch StatefulSet
+# =========================
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -351,34 +304,9 @@ spec:
         image: opensearchproject/opensearch:3.2.0
         ports:
         - containerPort: 9200
-
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 9200
-          initialDelaySeconds: 60
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
-
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 9200
-          initialDelaySeconds: 90
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
-
-        resources:
-          requests:
-            memory: "1Gi"
-            cpu: "250m"
-          limits:
-            memory: "2Gi"
-            cpu: "1"
-
         env:
+        - name: discovery.type
+          value: single-node
         - name: OPENSEARCH_JAVA_OPTS
           value: "-Xms512m -Xmx512m"
         - name: DISABLE_SECURITY_PLUGIN
@@ -387,30 +315,43 @@ spec:
           value: "true"
         - name: bootstrap.memory_lock
           value: "false"
-        - name: DISABLE_PERFORMANCE_ANALYZER_AGENT_CLI
-          value: "true"
-        - name: cluster.initial_master_nodes
-          value: "shuffle-opensearch"
-        - name: cluster.routing.allocation.disk.threshold_enabled
-          value: "false"
         - name: cluster.name
           value: "shuffle-cluster"
         - name: node.name
           value: "shuffle-opensearch"
         - name: node.store.allow_mmap
           value: "false"
-        - name: discovery.seed_hosts
-          value: "shuffle-opensearch"
         - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
               name: shuffle-opensearch-secret
               key: OPENSEARCH_INITIAL_ADMIN_PASSWORD
-
         volumeMounts:
         - name: opensearch-data
           mountPath: /usr/share/opensearch/data
-
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9200
+          initialDelaySeconds: 120
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 6
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9200
+          initialDelaySeconds: 180
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 6
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
       volumes:
       - name: opensearch-data
         persistentVolumeClaim:
@@ -428,3 +369,60 @@ spec:
   ports:
   - port: 9200
     targetPort: 9200
+---
+# =========================
+# Worker Job Template
+# =========================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: shuffle-worker-template
+  namespace: soc
+  labels:
+    app: shuffle-worker
+spec:
+  template:
+    metadata:
+      labels:
+        app: shuffle-worker
+    spec:
+      serviceAccountName: shuffle-automation
+      imagePullSecrets:
+        - name: ghcr-secret
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: shuffle-worker
+        image: ghcr.io/shuffle/shuffle-worker:nightly
+        imagePullPolicy: Always
+        env:
+        - name: BASE_URL
+          value: "http://shuffle-backend:5001"
+        - name: RUNNING_MODE
+          value: "kubernetes"
+        - name: IS_KUBERNETES
+          value: "true"
+        - name: DOCKER_API_VERSION
+          value: "1.40"
+        - name: CLEANUP
+          value: "true"
+        - name: SHUFFLE_LOGS_DISABLED
+          value: "true"
+        - name: SHUFFLE_STATS_DISABLED
+          value: "true"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+      volumes:
+      - name: docker-sock
+        hostPath:
+          path: /run/k3s/containerd/containerd.sock
+          type: Socket

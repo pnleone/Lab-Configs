@@ -26,9 +26,8 @@ thehive:
   image:
     registry: docker.io
     repository: strangebee/thehive
-    tag: "5.5.13-1"
+    tag: "5.5.13-1"        
     pullPolicy: IfNotPresent
-
 
   # --- Storage (Cloudflare R2 S3) ---
   storage:

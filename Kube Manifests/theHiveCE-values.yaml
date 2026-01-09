@@ -1,0 +1,129 @@
+################################
+# TheHive CE Helm Chart values #
+################################
+
+nameOverride: ""
+fullnameOverride: ""
+
+thehive:
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: "1000m"
+      memory: "2048Mi"
+      ephemeral-storage: "4Gi"
+    limits:
+      cpu: "3000m"
+      memory: "3584Mi"
+      ephemeral-storage: "4Gi"
+
+  jvmOpts: "-Xms2g -Xmx2g -Xmn300m"
+
+  image:
+    registry: docker.io
+    repository: thehiveproject/thehive
+    tag: "3.5.2-1"
+    pullPolicy: IfNotPresent
+
+  ########################################
+  # CE 3.x uses Elasticsearch 6.x only   #
+  ########################################
+  indexBackend: elasticsearch
+  indexVersion: 6
+
+  ########################################
+  # Storage (CE 3.x does NOT support S3) #
+  ########################################
+  storage:
+    accesskey: ""
+    secretKey: ""
+    endpoint: ""
+    bucket: ""
+    region: ""
+    usePathAccessStyle: false
+
+  ########################################
+  # HTTP Secret (recommended)            #
+  ########################################
+  httpSecret: ""
+
+  ########################################
+  # Cassandra Backend                    #
+  ########################################
+  database:
+    hostnames:
+      - cassandra.soc.svc.cluster.local
+
+  ########################################
+  # Elasticsearch Backend                #
+  ########################################
+  index:
+    hostnames:
+      - elasticsearch.soc.svc.cluster.local
+
+  ########################################
+  # Cortex Integration                   #
+  ########################################
+  cortex:
+    enabled: true
+    protocol: "http"
+    hostnames:
+      - "192.168.1.89"
+    port: 9002
+    api_keys:
+      - ""
+
+  ########################################
+  # MISP Integration                     #
+  ########################################
+  misp:
+    enabled: true
+    protocol: "http"
+    hostnames:
+      - "192.168.200.37"
+    port: 80
+    api_keys:
+      - ""
+
+  ########################################
+  # Service (LoadBalancer)               #
+  ########################################
+  service:
+    type: LoadBalancer
+    loadBalancerIP: 192.168.200.33
+    ports:
+      - name: http
+        port: 9000
+        targetPort: 9000
+      - name: kamon
+        port: 9095
+        targetPort: 9095
+
+  monitoring:
+    enabled: true
+    port: 9095
+
+  ########################################
+  # PVCs (CE uses ONLY /opt/thehive/data)#
+  ########################################
+  volumes:
+    - name: thehive-data
+      persistentVolumeClaim:
+        claimName: thehive-data-pvc
+
+  volumeMounts:
+    - name: thehive-data
+      mountPath: /opt/thehive/data
+
+########################################
+# Disable bundled Cassandra/ES charts  #
+########################################
+cassandra:
+  enabled: false
+
+elasticsearch:
+  enabled: false
+
+minio:
+  enabled: false
