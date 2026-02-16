@@ -1,0 +1,52 @@
+frontend:
+  service:
+    labels: {}
+    type: LoadBalancer
+    loadBalancerIP: 192.168.200.41
+    ports:
+      - name: http
+        port: 80
+        targetPort: 80
+      - name: https
+        port: 443
+        targetPort: 443
+  selector:
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/name: shuffle
+
+backend:
+  env:
+    BACKEND_PORT: "5001"
+    BASE_URL: "http://shuffle-backend.shuffle.svc.cluster.local:5001"
+    ORG_ID: "Shuffle"
+    SHUFFLE_APP_DOWNLOAD_LOCATION: "https://github.com/shuffle/python-apps"
+    SHUFFLE_DOWNLOAD_AUTH_BRANCH: "master"
+    SHUFFLE_APP_FORCE_UPDATE: "false"
+    SHUFFLE_CHAT_DISABLED: "true"
+    SHUFFLE_CLOUDRUN_URL: "http://shuffle-backend.shuffle.svc.cluster.local:5001"
+    SHUFFLE_OPENSEARCH_URL: "http://shuffle-opensearch:9200"
+    SHUFFLE_OPENSEARCH_USERNAME: "admin"
+    SHUFFLE_OPENSEARCH_PASSWORD: "admin"          # <-- missing from your current ConfigMap
+    SHUFFLE_OPENSEARCH_CERTIFICATE_FILE: ""
+    SHUFFLE_OPENSEARCH_SKIPSSL_VERIFY: "true"     # <-- set true if OpenSearch TLS is self-signed or disabled
+    SHUFFLE_OPENSEARCH_INDEX_PREFIX: ""
+    SHUFFLE_RERUN_SCHEDULE: "300"
+    TZ: "America/New_York"
+    REGISTRY_URL: ""
+    # Set default credentials so the backend creates an initial admin user on startup
+    SHUFFLE_DEFAULT_USERNAME: "admin"
+    SHUFFLE_DEFAULT_PASSWORD: "admin"             # <-- change to a strong value
+    SHUFFLE_ENCRYPTION_MODIFIER: "p7X9qL2mA4zR8tB1wC6vN0sJ5hY3kUe"
+
+orborus:
+  env:
+    RUNNING_MODE: "kubernetes"
+    ENVIRONMENT_NAME: "Shuffle"
+    ORG_ID: "Shuffle"
+    TZ: "America/New_York"
+    BASE_URL: "http://shuffle-backend.shuffle.svc.cluster.local:5001"
+    KUBERNETES_NAMESPACE: "shuffle"
+    REGISTRY_URL: ""
+    SHUFFLE_WORKER_IMAGE: "ghcr.io/shuffle/shuffle-worker:2.1.3"
+    SHUFFLE_WORKER_SERVICE_ACCOUNT_NAME: "shuffle-worker"

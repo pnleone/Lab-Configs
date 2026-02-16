@@ -1,0 +1,237 @@
+---
+###############################################################################
+# cisco_hardening.yml
+# Purpose: Cisco IOS hardening baseline - common, least intrusive tasks
+#
+# What this does:
+#   - Sets console/VTY timeouts
+#   - Enables secret password encryption
+#   - Configures logging
+#   - Disables unnecessary services (CDP, HTTP server)
+#   - Hardens SNMP
+#   - Configures NTP
+#   - Sets login banners
+#
+# Run: ansible-playbook cisco_hardening.yml -i inventory/hosts.ini --ask-vault-pass
+###############################################################################
+
+- name: Cisco IOS hardening baseline
+  hosts: cisco
+  gather_facts: false
+
+  tasks:
+
+    ##########################################################################
+    # PASSWORD & AUTH HARDENING
+    ##########################################################################
+
+    # - name: Enable password encryption service
+    #   cisco.ios.ios_config:
+    #     lines:
+    #       - service password-encryption
+    #   tags: passwords
+
+    # - name: Set minimum password length
+    #   cisco.ios.ios_config:
+    #     lines:
+    #       - security passwords min-length 12
+    #   tags: passwords
+
+    - name: Set console timeout
+      cisco.ios.ios_config:
+        lines:
+          - exec-timeout 5 0
+        parents: line con 0
+      tags: access
+
+    - name: Set VTY timeout and transport
+      cisco.ios.ios_config:
+        lines:
+          - exec-timeout 5 0
+          - transport input ssh
+          - login local
+        parents: line vty 0 4
+      tags: access
+
+    - name: Set auxiliary line security
+      cisco.ios.ios_config:
+        lines:
+          - no exec
+          - transport input none
+        parents: line aux 0
+      tags: access
+
+    ##########################################################################
+    # SSH HARDENING
+    ##########################################################################
+
+    - name: Enable SSH version 2
+      cisco.ios.ios_config:
+        lines:
+          - ip ssh version 2
+          - ip ssh time-out 60
+          - ip ssh authentication-retries 3
+      tags: ssh
+
+    # - name: Generate RSA keys for SSH (if not exists)
+    #   cisco.ios.ios_config:
+    #     lines:
+    #       - crypto key generate rsa modulus 2048
+    #   tags: ssh
+    #   ignore_errors: true
+
+    ##########################################################################
+    # DISABLE UNNECESSARY SERVICES
+    ##########################################################################
+
+    # - name: Disable CDP on interfaces
+    #   cisco.ios.ios_config:
+    #     lines:
+    #       - no cdp run
+    #   tags: services
+
+    - name: Disable HTTP server
+      cisco.ios.ios_config:
+        lines:
+          - no ip http server
+          - no ip http secure-server
+      tags: services
+
+    - name: Disable source routing
+      cisco.ios.ios_config:
+        lines:
+          - no ip source-route
+      tags: services
+
+    - name: Disable proxy ARP
+      cisco.ios.ios_config:
+        lines:
+          - no ip proxy-arp
+        parents: interface range GigabitEthernet0/0-3
+      tags: services
+
+    - name: Disable directed broadcast
+      cisco.ios.ios_config:
+        lines:
+          - no ip directed-broadcast
+        parents: interface range GigabitEthernet0/0-3
+      tags: services
+
+    ##########################################################################
+    # LOGGING
+    ##########################################################################
+
+    - name: Configure logging
+      cisco.ios.ios_config:
+        lines:
+          - logging buffered 32768
+          - logging console critical
+          - logging trap informational
+          - service timestamps log datetime msec
+          - service timestamps debug datetime msec
+      tags: logging
+
+    - name: Set logging source interface
+      cisco.ios.ios_config:
+        lines:
+          - logging source-interface Loopback0
+      tags: logging
+      ignore_errors: true
+
+    ##########################################################################
+    # SNMP HARDENING
+    ##########################################################################
+
+    # - name: Remove default SNMP community strings
+    #   cisco.ios.ios_config:
+    #     lines:
+    #       - no snmp-server community public
+    #       - no snmp-server community private
+    #   tags: snmp
+
+    # - name: Set secure SNMP community (read-only)
+    #   cisco.ios.ios_config:
+    #     lines:
+    #       - snmp-server community {{ vault_snmp_ro_community }} RO
+    #   tags: snmp
+    #   when: vault_snmp_ro_community is defined
+
+    ##########################################################################
+    # NTP CONFIGURATION
+    ##########################################################################
+
+    # - name: Configure NTP servers
+    #   cisco.ios.ios_config:
+    #     lines:
+    #       - ntp server 192.168.1.1 prefer
+    #       - ntp server 192.168.1.2
+    #   tags: ntp
+
+    # - name: Set NTP authentication
+    #   cisco.ios.ios_config:
+    #     lines:
+    #       - ntp authenticate
+    #       - ntp authentication-key 1 md5 {{ vault_ntp_key }}
+    #       - ntp trusted-key 1
+    #   tags: ntp
+    #   when: vault_ntp_key is defined
+
+    ##########################################################################
+    # BANNERS
+    ##########################################################################
+
+    - name: Set login banner
+      cisco.ios.ios_banner:
+        banner: login
+        text: |
+          **************************************************************************
+          homelab, shadowitlab.com
+          UNAUTHORIZED ACCESS TO THIS DEVICE IS PROHIBITED
+          All connections are monitored and recorded.
+          Disconnect IMMEDIATELY if you are not an authorized user!
+          **************************************************************************
+        state: present
+      tags: banners
+
+    - name: Set MOTD banner
+      cisco.ios.ios_banner:
+        banner: motd
+        text: |
+          **************************************************************************
+          shadowitlab.com
+          Lab Network - Authorized Personnel Only
+          **************************************************************************
+        state: present
+      tags: banners
+
+    # ##########################################################################
+    # # AAA AUTHENTICATION (if TACACS+/RADIUS available)
+    # ##########################################################################
+
+    # - name: Enable AAA
+    #   cisco.ios.ios_config:
+    #     lines:
+    #       - aaa new-model
+    #       - aaa authentication login default local
+    #       - aaa authorization exec default local
+    #   tags: aaa
+
+    ##########################################################################
+    # CONTROL PLANE POLICING
+    ##########################################################################
+
+    - name: Enable TCP keepalives
+      cisco.ios.ios_config:
+        lines:
+          - service tcp-keepalives-in
+          - service tcp-keepalives-out
+      tags: tcp
+
+    ##########################################################################
+    # SAVE CONFIGURATION
+    ##########################################################################
+
+    - name: Save running config to startup config
+      cisco.ios.ios_config:
+        save_when: modified
+      tags: always

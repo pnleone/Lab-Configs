@@ -1,4 +1,3 @@
-
 [![Docs](https://img.shields.io/badge/Doc%20Version-v1.0-blue.svg)](https://)
 ![GitHub Release Date](https://img.shields.io/github/release-date/pnleone/Projects?display_date=created_at&color=red)
 ![GitHub contributors](https://img.shields.io/github/contributors/pnleone/Projects?color=red)
@@ -12,7 +11,8 @@
 Welcome to my professional development repository. This space serves as a comprehensive showcase of my journey into the cybersecurity field, documenting the technical labs, security frameworks, and automation workflows I have built to defend modern infrastructure. 
 
 My focus is on bridging the gap between **IT Operations (SysAdmin)** and **Security Operations (Blue Teaming)**. Through these projects, I demonstrate a commitment to continuous learning, a "security-by-design" mindset, and the technical proficiency required to mitigate risks in enterprise environments.
-
+>[!IMPORTANT]
+>*  **[Current Resume](https://github.com/pnleone/Projects/blob/270d13c6e2570831a62d3ca6564111f6000050cd/Paul_Leone_Resume_2026-01-09.pdf)**
 ---
 ## Key Technical Competencies
 ![SecOps](https://img.shields.io/badge/SECURITY_OPERATIONS-ffffff?style=flat&logo=target&logoColor=black&labelColor=white&color=black) ![Wazuh](https://img.shields.io/badge/Wazuh-31a3d0?style=flat&logo=wazuh&logoColor=white) ![Splunk](https://img.shields.io/badge/Splunk-7DB333?style=flat&logo=splunk&logoColor=white) ![ELK Stack](https://img.shields.io/badge/ELK_Stack-005571?style=flat&logo=elasticstack&logoColor=white) ![Nessus](https://img.shields.io/badge/Nessus-00244D?style=flat&logo=tenable&logoColor=white) ![theHive](https://img.shields.io/badge/theHive-FFBB11?style=flat&logo=hive&logoColor=black) ![Shuffle SOAR](https://img.shields.io/badge/Shuffle_SOAR-24292e?style=flat&logo=shuffle&logoColor=white) ![n8n](https://img.shields.io/badge/n8n-FF6C37?style=flat&logo=n8n&logoColor=white) ![OpenVAS](https://img.shields.io/badge/OpenVAS-65AD2F?style=flat&logo=openvas&logoColor=white) ![VirusTotal](https://img.shields.io/badge/VirusTotal-3949AB?style=flat&logo=virustotal&logoColor=white) <br>
@@ -43,7 +43,69 @@ My focus is on bridging the gap between **IT Operations (SysAdmin)** and **Secur
 
 ## Security Homelab & Technical Labs
 *Deep-dive technical implementations of defensive and offensive security controls.* <br>
-### Homelab Overview
+
+### Lab Mission Statement
+
+This enterprise-grade security laboratory demonstrates production-ready capabilities across **Security Operations (SecOps)**, **Systems Engineering**, and **Network Defense**. Designed to simulate real-world enterprise environments, the lab serves as both a technical proving ground and a continuous learning platform focused on:
+
+- **Threat Detection & Response** — Deploying SIEM/XDR platforms, orchestrating automated incident response, and implementing behavioral threat intelligence
+- **Defense-in-Depth Architecture** — Building multi-layered security controls spanning network perimeter, application layer, identity management, and endpoint protection
+- **Enterprise Infrastructure Operations** — Managing hybrid virtualization platforms, container orchestration, and high-availability services at scale
+- **Security Engineering & Automation** — Implementing Infrastructure as Code (IaC), SOAR workflows, and policy-driven security controls
+
+**Business Value Demonstrated:** This lab mirrors the security architecture, operational workflows, and technical complexity found in mid-to-large enterprise environments, providing hands-on experience directly transferable to SOC Analyst, Security Engineer, and Infrastructure Security roles.
+
+---
+
+### Architecture Principles
+
+Every design decision in this lab is guided by three core security principles that align with industry frameworks (NIST CSF 2.0, CIS Controls v8, MITRE ATT&CK):
+
+#### **1. Defense in Depth**
+Multiple independent security layers ensure that a single compromised control does not result in full system compromise. Network segmentation, application-layer filtering, endpoint monitoring, and identity verification create overlapping defensive barriers.
+
+**Technical Implementation:**
+- Network perimeter (firewall ACLs, IDS/IPS)
+- Application layer (WAF, reverse proxy authentication)
+- Endpoint security (EDR agents, vulnerability scanning)
+- Identity controls (MFA, RBAC, PKI)
+
+#### **2. Secure by Design**
+Security controls are embedded into architecture from the ground up, not bolted on afterward. All services default to encrypted communications (TLS), authenticated access (SSO/MFA), and least-privilege authorization (RBAC).
+
+**Technical Implementation:**
+- Automated PKI with certificate lifecycle management
+- Mandatory authentication via Authentik SSO for web services
+- Encrypted DNS (DNSSEC)
+- Immutable infrastructure through IaC version control
+
+#### **3. Zero Trust Architecture**
+No implicit trust is granted based on network location. Every request is authenticated, authorized, and encrypted regardless of origin. Micro-segmentation and identity-aware proxies ensure continuous verification.
+
+**Technical Implementation:**
+- ForwardAuth middleware validates identity at the edge
+- Network segmentation isolates trust zones
+- Certificate-based mutual TLS for service-to-service communication
+- Tailscale mesh VPN for authenticated peer-to-peer connectivity
+
+
+---
+#### **Key Capabilities Demonstrated** 
+
+   Strategic Value
+   -  Reduced Attack Surface: Multi-layer controls detect and block threats at network, application, and endpoint levels
+   - 	Operational Resilience: High-availability architecture ensures continuous security monitoring even during maintenance
+   -	Compliance Readiness: Framework alignment with NIST CSF 2.0, CIS Controls v8, and MITRE ATT&CK demonstrates audit-ready documentation
+   -	Scalability: Container orchestration and IaC enable rapid deployment of new security controls without manual configuration
+
+   Engineering Depth
+   -	Advanced Threat Detection: Behavioral threat intelligence (CrowdSec), network anomaly detection (Suricata/Snort), and SIEM correlation (ELK Stack/Splunk)
+   -	Automated Incident Response: SOAR workflows integrate TheHive case management, Cortex/MISP enrichment, and automated remediation via pfSense API
+   -	Infrastructure as Code: Terraform and Ansible enable version-controlled, repeatable deployments with full audit trails
+   -	Full-Stack Observability: Unified metrics collection (Prometheus), visualization (Grafana/Pulse), and alerting (Discord webhooks, SMTP relay)
+   -	Forensic Readiness: Comprehensive logging, artifact preservation, and analysis tools (Volatility, KAPE, Velociraptor) support post-incident investigation
+
+
 ![Homelab Network Diagram](https://github.com/pnleone/Projects/blob/926bf06614bb78806bd56e71f39b242293340ca7/Security%20Homelab/Homelab_network_20260108.jpg)
 ### Network Security & Perimeter Defense
 * **[Advanced Network Security Deployment](https://github.com/your-username/linkTBD)**: Configured **pfSense/OPNsense** firewalls with multi-zone segmentation (VLANs), granular ACLs, and encrypted tunnels (TLS/SSL, SSH).
@@ -69,8 +131,16 @@ My focus is on bridging the gap between **IT Operations (SysAdmin)** and **Secur
 ---
 ## Professional Certifications & Education
 >[!IMPORTANT]
->* *Cisco Certified Network Associate (July 2024) | CompTIA Security+ (Feb 2025) | TryHackMe SOC Level 1 (Aug 2024) | TryHackMe Jr Penetration Tester (Oct 2024) | EC >Council CEH (in progress) | Fortinet Certified Fundamentals in Cybersecurity (Oct 2024).*
+>*  Cisco Certified Network Associate (July 2024)
+>*  CompTIA Security+ (Feb 2025)
+>*  TryHackMe SOC Level 1 (Aug 2025)
+>*  TryHackMe Jr Penetration Tester (Oct 2025)
+>*  EC Council CEH (in progress)*
+>*  Fortinet Certified Fundamentals in Cybersecurity (Oct 2024).
+>
+>
+>
 ><img src="https://tryhackme-badges.s3.amazonaws.com/pnleone.png" alt="Your Image Badge" />
 ---
->[!NOTE]
->** How to reach me:** [https://www.linkedin.com/in/pnleone/] | [pnleone@outlook.com]
+> [!NOTE]
+> **How to reach me:** [LinkedIn](https://www.linkedin.com/in/pnleone/) | [pnleone@outlook.com](mailto:pnleone@outlook.com)

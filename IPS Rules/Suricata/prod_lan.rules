@@ -1,0 +1,51 @@
+#############################################
+# PROD_LAN Suricata Rules
+# Network: 192.168.1.0/24
+#############################################
+
+# ====== SSH / LINUX ======
+
+alert tcp any any -> 192.168.1.0/24 22 \
+(msg:"PROD: SSH Brute Force Attempt"; flags:S; detection_filter:track by_src, count 5, seconds 60; sid:900001; rev:2;)
+
+alert tcp 192.168.2.0/24 any -> 192.168.1.0/24 22 \
+(msg:"PROD: SSH Attempt from EXT_LAN"; sid:900002; rev:1;)
+
+alert tcp any any -> 192.168.1.0/24 22 \
+(msg:"PROD: sudo Keyword in SSH Session"; content:"sudo"; sid:900003; rev:1;)
+
+
+# ====== RECON / SCANNING ======
+
+alert tcp any any -> 192.168.1.0/24 any \
+(msg:"PROD: Nmap OS Detection Scan"; content:"|4E 4D 41 50|"; sid:900004; rev:1;)
+
+alert tcp [192.168.100.0/24,192.168.200.0/24] any -> 192.168.1.0/24 any \
+(msg:"PROD: LAB → PROD Port Scan"; flags:S; threshold:type both, track by_src, count 20, seconds 10; sid:900008; rev:1;)
+
+
+# ====== LATERAL MOVEMENT (TONED DOWN) ======
+
+alert tcp [192.168.100.0/24,192.168.200.0/24] any -> 192.168.1.0/24 [22,135,139,445,3389] \
+(msg:"PROD: LAB → PROD Unauthorized High-Risk Port"; sid:900007; rev:4;)
+
+alert ip [10.20.0.0/24,192.168.3.0/24] any -> 192.168.1.0/24 any \
+(msg:"PROD: ISO → PROD Traffic (Policy Violation)"; sid:900006; rev:1;)
+
+
+# ====== SMB / NETBIOS ======
+
+alert tcp any any -> 192.168.1.0/24 445 \
+(msg:"PROD: SMBv1 Detected"; content:"|FF 53 4D 42|"; depth:4; sid:9000081; rev:1;)
+
+alert udp any any -> 192.168.1.0/24 137 \
+(msg:"PROD: NetBIOS Query Flood"; threshold:type both, track by_src, count 20, seconds 10; sid:900009; rev:1;)
+
+
+# ====== TEST RULES ======
+
+alert icmp any any -> 192.168.1.254 any \
+(msg:"TEST: ICMP to pfSense VIP (PROD)"; sid:900010; rev:1;)
+
+alert tcp any any -> 192.168.1.254 443 \
+(msg:"TEST: HTTPS to pfSense GUI (PROD)"; sid:900011; rev:1;)

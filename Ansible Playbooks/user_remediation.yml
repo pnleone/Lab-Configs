@@ -1,0 +1,120 @@
+---
+- name: Remediate ansible + paul users, SSH keys, and permissions
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # These should already exist in group_vars/all or vault
+    ansible_ssh_pubkey: "{{ ansible_ssh_pubkey }}"
+    officepc_ssh_pubkey: "{{ officepc_ssh_pubkey }}"
+
+  tasks:
+
+    ###########################################################################
+    # 1. Fix ansible user group structure
+    ###########################################################################
+
+    - name: Ensure ansible group exists
+      ansible.builtin.group:
+        name: ansible
+        state: present
+
+    - name: Ensure ansible user exists and uses correct primary group
+      ansible.builtin.user:
+        name: ansible
+        group: ansible
+        shell: /bin/bash
+        password: "{{ vault_ansible_password | password_hash('sha512') }}"
+        create_home: yes
+
+    - name: Fix ownership of ansible home directory
+      ansible.builtin.file:
+        path: /home/ansible
+        state: directory
+        owner: ansible
+        group: ansible
+        mode: '0750'
+
+    - name: Ensure ansible .ssh directory exists
+      ansible.builtin.file:
+        path: /home/ansible/.ssh
+        state: directory
+        owner: ansible
+        group: ansible
+        mode: '0700'
+
+    ###########################################################################
+    # 2. Deploy SSH keys for ansible user
+    ###########################################################################
+
+    - name: Add controller SSH key for ansible user
+      ansible.posix.authorized_key:
+        user: ansible
+        key: "{{ ansible_ssh_pubkey }}"
+        state: present
+        comment: "Ansible-controller"
+
+    - name: Add OfficePC SSH key for ansible user
+      ansible.posix.authorized_key:
+        user: ansible
+        key: "{{ officepc_ssh_pubkey }}"
+        state: present
+        comment: "OfficePC-admin-access"
+
+    ###########################################################################
+    # 3. Deploy sudoers for ansible (passwordless)
+    ###########################################################################
+
+    - name: Deploy sudoers file for ansible user
+      ansible.builtin.copy:
+        content: "ansible ALL=(ALL) NOPASSWD:ALL\n"
+        dest: /etc/sudoers.d/ansible
+        owner: root
+        group: root
+        mode: '0440'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    ###########################################################################
+    # 4. Paul user (leave group structure as-is)
+    ###########################################################################
+
+    - name: Ensure paul user exists
+      ansible.builtin.user:
+        name: paul
+        shell: /bin/bash
+        groups: "{{ 'sudo' if ansible_os_family == 'Debian' else 'wheel' }}"
+        append: true
+        password: "{{ vault_paul_password | password_hash('sha512') }}"
+
+    - name: Ensure paul .ssh directory exists
+      ansible.builtin.file:
+        path: /home/paul/.ssh
+        state: directory
+        owner: paul
+        group: paul
+        mode: '0700'
+
+    ###########################################################################
+    # 5. Deploy SSH keys for paul user
+    ###########################################################################
+
+    - name: Add OfficePC SSH key for paul user
+      ansible.posix.authorized_key:
+        user: paul
+        key: "{{ officepc_ssh_pubkey }}"
+        state: present
+        comment: "OfficePC-admin-access"
+
+    ###########################################################################
+    # 6. Deploy sudoers for paul (password required)
+    ###########################################################################
+
+    - name: Deploy sudoers file for paul
+      ansible.builtin.copy:
+        content: "paul ALL=(ALL) ALL, !/bin/bash, !/usr/bin/bash, !/bin/sh, !/usr/bin/su, !/usr/bin/fish, !/usr/bin/zsh, !/usr/bin/ksh, !sudoedit\n"
+        dest: /etc/sudoers.d/paul
+        owner: root
+        group: root
+        mode: '0440'
+        validate: '/usr/sbin/visudo -cf %s'

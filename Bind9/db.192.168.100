@@ -1,7 +1,7 @@
 $TTL    604800
 $ORIGIN 100.168.192.IN-ADDR.ARPA.
-@       IN      SOA     bind.home.com. pnleone.outlook.com. (
-                      2025083105   ; Serial
+@       IN      SOA     bind.home.com. pnleone.shadowitlab.com. (
+                      2026011401   ; Serial
                         604800     ; Refresh
                          86400     ; Retry
                        2419200     ; Expire
@@ -12,7 +12,8 @@ $ORIGIN 100.168.192.IN-ADDR.ARPA.
 2       IN      PTR     fwa.home.com.
 3       IN      PTR     fwb.home.com.
 11      IN      PTR     win11pfs.home.com.
-4       IN      PTR     host1.home.com.
+6       IN      PTR     r1b.home.com.
 50      IN      PTR     rootca.home.com.
 51      IN      PTR     stepca.home.com.
 15      IN      PTR     ovrsr.home.com.
+5       IN      PTR     nessus.home.com.

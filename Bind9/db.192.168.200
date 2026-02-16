@@ -1,11 +1,17 @@
 $TTL    604800
 $ORIGIN 200.168.192.IN-ADDR.ARPA.
-@       IN      SOA     bind.home.com. pnleone.outlook.com. (
-                      2025072601 ; Serial
+@       IN      SOA     bind.home.com. pnleone.shadowitlab.com. (
+                      2026011401   ; Serial
                         604800     ; Refresh
                          86400     ; Retry
                        2419200     ; Expire
                         604800 )   ; Negative Cache TTL
 ;
 @       IN      NS      bind.home.com.
-5       IN      PTR     host2.home.com.
+244     IN      PTR     jellyfin.home.com.
+8       IN      PTR     elastic.home.com.
+33      IN      PTR     hive.home.com.
+37      IN      PTR     misp.home.com.
+35      IN      PTR     patch.home.com.
+40      IN      PTR     shuffle.home.com.
+6       IN      PTR     r1d.home.com.

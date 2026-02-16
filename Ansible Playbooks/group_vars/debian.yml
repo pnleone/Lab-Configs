@@ -1,0 +1,38 @@
+---
+
+ansible_become: true
+ansible_become_method: sudo
+ansible_become_password: "{{ vault_ansible_password }}"
+
+# group_vars/debian.yml
+# Applies to: [debian] group — Ubuntu, Debian, Kali, ParrotOS
+# These variables take precedence over all.yml for Debian-family hosts.
+
+###############################################################################
+# SSH
+###############################################################################
+ssh_service: ssh     # Debian family uses 'ssh', RedHat uses 'sshd'
+
+###############################################################################
+# APACHE / PHP (used by hostvars.yml and web server playbooks)
+###############################################################################
+apache_package: apache2
+apache_service: apache2
+php_package: libapache2-mod-php
+
+###############################################################################
+# UTILITY PACKAGES
+# These override the utility_packages_debian list in all.yml if defined here.
+# Keeping them here makes the Debian-specific package names explicit.
+###############################################################################
+utility_packages_debian:
+  - dnsutils          # provides: dig
+  - traceroute
+  - iputils-ping
+  - qemu-guest-agent  # VMs only — ignore_errors handles LXCs
+
+
+
+
+
+

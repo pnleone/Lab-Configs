@@ -4,60 +4,48 @@ http:
       rule: "Host(`trfk.home.com`)"
       service: api@internal
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
       middlewares:
-       - authentik
-       - secure-headers
-    #authentikop-router:
-    #  rule: "Host(`authentik.home.com`) && PathPrefix(`/outpost.goauthentik.io/`)"
-    #  priority: 15
-    #  service: authentik-service
-    #  entryPoints: [websecure]
-    #  tls: true
-
-    #authentik-router:
-    #  rule: "Host(`authentik.home.com`)"
-    #  service: authentik-service
-    #  entryPoints: [websecure]
-    #  tls: true
-
+        - authentik
+        - secure-headers
+    
     vault-router:
       rule: "Host(`vault.home.com`)"
       service: vault-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
 
     portainer-router:
       rule: "Host(`portainer.home.com`)"
       service: portainer-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
 
     plex-router:
       rule: "Host(`plex.home.com`)"
       service: plex-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
       middlewares:
-       - authentik
+        - authentik
 
-    jellyfin-router:
-      rule: "Host(`jellyfin.home.com`)"
-      service: jellyfin-service
-      entryPoints: [websecure]
-      tls: true
-
-    tautulli-router:
-      rule: "Host(`tautulli.home.com`)"
-      service: tautulli-service
-      entryPoints: [websecure]
-      tls: true
+    # jellyfin-router:
+    #   rule: "Host(`jellyfin.home.com`)"
+    #   service: jellyfin-service
+    #   entryPoints: [websecure]
+    #   tls:
+    #     certResolver: stepca
 
     pihole-router:
       rule: "Host(`pihole.home.com`)"
       service: pihole-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
       middlewares:
         - pihole-rewrite
         - authentik
@@ -66,21 +54,25 @@ http:
       rule: "Host(`piholebk.home.com`)"
       service: piholebk-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
       middlewares:
         - pihole-rewrite
         - authentik
-    # uptimek-router:
-    #   rule: "Host(`uptimek.home.com`)"
-    #   service: uptimek-service
-    #   entryPoints: [websecure]
-    #   tls: true
+    
+    uptimek-router:
+      rule: "Host(`uptimek.home.com`)"
+      service: uptimek-service
+      entryPoints: [websecure]
+      tls:
+        certResolver: stepca
 
     pulse-router:
       rule: "Host(`pulse.home.com`)"
       service: pulse-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
       middlewares:
         - pulse-headers
         - authentik
@@ -88,66 +80,103 @@ http:
     pulse-router-auth:
       rule: "Host(`pulse.home.com`) && PathPrefix(`/outpost.goauthentik.io/`)"
       entryPoints: [websecure]
-      service: authentik
+      service: authentik-service
       tls: true
 
     splunk-router:
       rule: "Host(`splunk.home.com`)"
       service: splunk-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
 
     grafana-router:
       rule: "Host(`grafana.home.com`)"
       service: grafana-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
 
     waf-router:
       rule: "Host(`waf.home.com`)"
       service: waf-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
 
     vas-router:
       rule: "Host(`vas.home.com`)"
       service: vas-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
 
     wud-router:
       rule: "Host(`wud.home.com`)"
       service: wud-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
 
     qbt-router:
       rule: "Host(`qbt.home.com`)"
       service: qbt-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
 
     n8n-router:
       rule: "Host(`n8n.home.com`)"
       service: n8n-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
 
     checkmk-router:
       rule: "Host(`checkmk.home.com`)"
       service: checkmk-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
       middlewares:
-       - authentik
+        - authentik
 
     dashbd-router:
       rule: "Host(`dashbd.home.com`)"
       service: dashbd-service
       entryPoints: [websecure]
-      tls: true
+      tls:
+        certResolver: stepca
       middlewares:
-       - authentik
+        - authentik
+
+    cortex-router:
+      rule: "Host(`cortex.home.com`)"
+      service: cortex-service
+      entryPoints: [websecure]
+      tls:
+        certResolver: stepca
+    
+    shuffle-router:
+      rule: "Host(`shuffle.home.com`)"
+      service: shuffle-service
+      entryPoints: [websecure]
+      tls:
+        certResolver: stepca
+
+    wazuh-router:
+      rule: "Host(`wazuh.home.com`)"
+      service: wazuh-service
+      entryPoints: [websecure]
+      tls:
+        certResolver: stepca
+
+    prom-router:
+      rule: "Host(`prom.home.com`)"
+      service: prom-service
+      entryPoints: [websecure]
+      tls:
+        certResolver: stepca
 
   services:
     vault-service:
@@ -168,48 +197,38 @@ http:
 
     plex-service:
       loadBalancer:
-        serversTransport: plex-tls
         servers:
           - url: "https://192.168.1.136:32400"
 
-    jellyfin-service:
-      loadBalancer:
-        servers:
-          - url: "https://192.168.200.244:8096"
-
-    tautulli-service:
-      loadBalancer:
-        servers:
-          - url: "https://192.168.1.140:8181"
+    # jellyfin-service:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "https://192.168.200.244:8096"
 
     pihole-service:
       loadBalancer:
-        serversTransport: pihole-tls
         servers:
           - url: "http://192.168.1.250"
 
     piholebk-service:
       loadBalancer:
-        serversTransport: piholebk-tls
         servers:
-          - url: "http://192.168.1.126/admin/login"
+          - url: "http://192.168.1.126"
 
-    # uptimek-service:
-    #   loadBalancer:
-    #     serversTransport: uptimek-tls
-    #     servers:
-    #       - url: "http://192.168.1.181:3001"
+    uptimek-service:
+      loadBalancer:
+        serversTransport: uptimek-transport 
+        servers:
+          - url: "http://192.168.1.181:3001"
 
     pulse-service:
       loadBalancer:
-        serversTransport: pulse-tls
         servers:
           - url: "http://192.168.1.126:7655"
     #     passHostHeader: true
 
     splunk-service:
       loadBalancer:
-        serversTransport: splunk-tls
         servers:
           - url: "http://192.168.1.109:8000"
 
@@ -219,64 +238,79 @@ http:
     #    servers:
     #      - url: "https://192.168.1.166:9443"
 
-    authentik:
-      loadBalancer:
-        servers:
-          - url: http://authentik_proxy:9000/outpost.goauthentik.io
+    authentik-service:
+     loadBalancer:
+       servers:
+         - url: http://authentik_proxy:9000/outpost.goauthentik.io
 
     grafana-service:
       loadBalancer:
-        serversTransport: grafana-tls
         servers:
           - url: "http://192.168.1.246:3000"
 
     waf-service:
       loadBalancer:
-        serversTransport: waf-tls
+        serversTransport: waf-transport
         servers:
           - url: "https://192.168.1.89:9443"
 
     vas-service:
       loadBalancer:
-        serversTransport: vas-tls
         servers:
           - url: "http://192.168.1.166:9392"
 
     wud-service:
       loadBalancer:
-        serversTransport: wud-tls
         servers:
           - url: "http://192.168.1.126:3000"
 
     n8n-service:
       loadBalancer:
-        serversTransport: n8n-tls
         servers:
           - url: "http://192.168.1.166:5678"
 
     qbt-service:
       loadBalancer:
-        serversTransport: qbt-tls
         servers:
           - url: "http://192.168.100.15:9866"
 
     checkmk-service:
       loadBalancer:
-        serversTransport: checkmk-tls
         servers:
           - url: "http://192.168.1.126:5000"
 
     dashbd-service:
       loadBalancer:
-        serversTransport: dashbd-tls
         servers:
           - url: "http://192.168.200.7:7990"
 
+    cortex-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.89:9002"
+
+    shuffle-service:
+      loadBalancer:
+        serversTransport: shuffle-transport
+        servers:
+          - url: "https://192.168.1.89:3001"
+
+    wazuh-service:
+      loadBalancer:
+        serversTransport: wazuh-transport
+        servers:
+          - url: "https://192.168.1.219"
+
+    prom-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.126:9090"
+
   middlewares:
     dashboard-auth:
-       basicAuth:
-         users:
-           - "admin:$$apr1$$r4U7vCvc$$dbZMEYMYtLPNPVaNYVZ1S0"
+      basicAuth:
+        users:
+          - "admin:$$apr1$$r4U7vCvc$$dbZMEYMYtLPNPVaNYVZ1S0"
 
     pihole-strip:
       stripPrefix:
@@ -295,23 +329,23 @@ http:
 
 
     authentik:
-       forwardAuth:
-         address: "http://authentik_proxy:9000/outpost.goauthentik.io/auth/traefik"
-         trustForwardHeader: true
-         authResponseHeadersRegex: "^X-Authentik-"
-         authResponseHeaders:
-           - X-Authentik-Username
-           - X-Authentik-Groups
-           - X-Authentik-Entitlements
-           - X-Authentik-Email
-           - X-Authentik-Name
-           - X-Authentik-Uid
-           - X-Authentik-Jwt
-           - X-Authentik-Meta-Jwks
-           - X-Authentik-Meta-Outpost
-           - X-Authentik-Meta-Provider
-           - X-Authentik-Meta-App
-           - X-Authentik-Meta-Version
+      forwardAuth:
+        address: "http://authentik_proxy:9000/outpost.goauthentik.io/auth/traefik"
+        trustForwardHeader: true
+        authResponseHeadersRegex: "^X-Authentik-"
+        authResponseHeaders:
+          - X-Authentik-Username
+          - X-Authentik-Groups
+          - X-Authentik-Entitlements
+          - X-Authentik-Email
+          - X-Authentik-Name
+          - X-Authentik-Uid
+          - X-Authentik-Jwt
+          - X-Authentik-Meta-Jwks
+          - X-Authentik-Meta-Outpost
+          - X-Authentik-Meta-Provider
+          - X-Authentik-Meta-App
+          - X-Authentik-Meta-Version
 
     pihole-headers:
       headers:
@@ -331,161 +365,44 @@ http:
         #crowdsec-bouncer-traefik-plugin:
           #CrowdsecLapiUrl: http://192.168.1.33:8080
           #CrowdsecLapiKey: "sbP/Z65SG3cgEA4e0H7rNZ8IGdrjhRLHvVKxgBKxNVQ"
-    safeline:
-      plugin:
-        traefik-safeline:
-            addr: 192.168.1.89:8000
+   # safeline:
+    #  plugin:
+    #    traefik-safeline:
+    #        addr: 192.168.1.89:8000
 
   serversTransports:
 
     vault-tls:
-      rootCAs:
-        - /certs/root_ca.crt
       serverName: vault.home.com
-
+      insecureSkipVerify: true
+      rootCAs:
+        - /certs/root_ca.crt
+    
     portainer-tls:
-      rootCAs:
-        - /certs/root_ca.crt
       serverName: portainer.home.com
-
-    piholebk-tls:
+      insecureSkipVerify: true
       rootCAs:
         - /certs/root_ca.crt
-      serverName: piholebk.home.com
+  
+    uptimek-transport:
+      forwardingTimeouts: 
+        idleTimeout: 0s   # Keeps WebSockets alive
       insecureSkipVerify: true
 
-    pihole-tls:
-      rootCAs:
-        - /certs/root_ca.crt
-      serverName: pihole.home.com
+    shuffle-transport:
+      serverName: shuffle.home.com
       insecureSkipVerify: true
-
-    plex-tls:
       rootCAs:
         - /certs/root_ca.crt
-      serverName: plex.home.com
-      insecureSkipVerify: true
-
-    # uptimek-tls:
-    #   rootCAs:
-    #     - /certs/root_ca.crt
-    #   serverName: uptimek.home.com
-    #   insecureSkipVerify: true
-
-    authentik-tls:
-      rootCAs:
-        - /certs/root_ca.crt
-      serverName: authentik.home.com
-
-    pulse-tls:
-      rootCAs:
-        - /certs/root_ca.crt
-      serverName: pulse.home.com
-      insecureSkipVerify: true
-
-    splunk-tls:
-      rootCAs:
-        - /certs/root_ca.crt
-      serverName: splunk.home.com
-      insecureSkipVerify: true
-
-    grafana-tls:
-      rootCAs:
-        - /certs/root_ca.crt
-      serverName: grafana.home.com
-      insecureSkipVerify: true
-
-    waf-tls:
-      rootCAs:
-        - /certs/root_ca.crt
+    
+    waf-transport:
       serverName: waf.home.com
       insecureSkipVerify: true
-
-    vas-tls:
       rootCAs:
         - /certs/root_ca.crt
-      serverName: vas.home.com
-      insecureSkipVerify: false
 
-    wud-tls:
-      rootCAs:
-        - /certs/root_ca.crt
-      serverName: wud.home.com
-      insecureSkipVerify: false
-
-    qbt-tls:
-      rootCAs:
-        - /certs/root_ca.crt
-      serverName: qbt.home.com
+    wazuh-transport:
+      serverName: wazuh.home.com
       insecureSkipVerify: true
-
-    n8n-tls:
       rootCAs:
         - /certs/root_ca.crt
-      serverName: n8n.home.com
-      insecureSkipVerify: true
-
-    checkmk-tls:
-      rootCAs:
-        - /certs/root_ca.crt
-      serverName: checkmk.home.com
-      insecureSkipVerify: true
-
-    dashbd-tls:
-      rootCAs:
-        - /certs/root_ca.crt
-      serverName: dashbd.home.com
-      insecureSkipVerify: true
-
-tls:
-  certificates:
-    - certFile: /certs/chained_whoami.crt
-      keyFile:  /certs/whoami.key
-    - certFile: /certs/fullchain_trfk.crt
-      keyFile:  /certs/trfk.key
-    - certFile: /certs/fullchain_portainer.crt
-      keyFile: /certs/portainer.key
-    - certFile: /certs/fullchain_vault.crt
-      keyFile: /certs/vault.key
-    - certFile: /certs/fullchain_pihole.crt
-      keyFile: /certs/pihole.key
-    - certFile: /certs/fullchain_piholebk.crt
-      keyFile: /certs/piholebk.key
-    - certFile: /certs/fullchain_plex.crt
-      keyFile: /certs/plex.key
-    - certFile: /certs/fullchain_uptimek.crt
-      keyFile: /certs/uptimek.key
-    #- certFile: /certs/fullchain_authentik.crt
-    #  keyFile: /certs/authentik.key
-    - certFile: /certs/fullchain_pulse.crt
-      keyFile: /certs/pulse.key
-    - certFile: /certs/fullchain_splunk.crt
-      keyFile: /certs/splunk.key
-    - certFile: /certs/fullchain_grafana.crt
-      keyFile: /certs/grafana.key
-    #- certFile: /certs/fullchain_checkmate.crt
-    #  keyFile: /certs/checkmate.key
-    - certFile: /certs/fullchain_vas.crt
-      keyFile: /certs/vas.key
-    - certFile: /certs/fullchain_wud.crt
-      keyFile: /certs/wud.key
-    - certFile: /certs/fullchain_qbt.crt
-      keyFile: /certs/qbt.key
-    - certFile: /certs/fullchain_n8n.crt
-      keyFile: /certs/n8n.key
-    - certFile: /certs/fullchain_checkmk.crt
-      keyFile: /certs/checkmk.key
-    - certFile: /certs/fullchain_dashbd.crt
-      keyFile: /certs/dashbd.key
-    - certFile: /certs/fullchain_waf2.crt
-      keyFile: /certs/waf.key
-
-metrics:
-  prometheus:
-    addEntryPointsLabels: true
-    addServicesLabels: true
-    buckets:
-      - 0.1
-      - 0.3
-      - 1.2
-      - 5.0

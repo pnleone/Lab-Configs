@@ -1,0 +1,284 @@
+---
+###############################################################################
+# vmware_hardening.yml
+# Purpose: VMware ESXi hardening baseline
+#
+# What this does:
+#   - Configures SSH/ESXi Shell timeouts
+#   - Hardens NTP configuration
+#   - Sets syslog forwarding
+#   - Disables unnecessary services
+#   - Configures firewall rules
+#   - Sets secure boot options
+#   - Hardens VM communication
+#
+# Run: ansible-playbook vmware_hardening.yml -i inventory/hosts.ini --ask-vault-pass
+# Requires: community.vmware collection
+###############################################################################
+
+- name: VMware ESXi hardening baseline
+  hosts: vcenter
+  gather_facts: false
+  connection: local
+
+  vars:
+    vcenter_hostname: "{{ inventory_hostname }}"
+    vcenter_username: "root"
+    vcenter_password: "{{ vault_vmw_root_password }}"
+    validate_certs: false
+
+  tasks:
+
+    ##########################################################################
+    # SSH/SHELL HARDENING
+    ##########################################################################
+
+    - name: Set SSH timeout
+      community.vmware.vmware_host_config_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        options:
+          'UserVars.ESXiShellInteractiveTimeOut': 300
+      tags: ssh
+
+    - name: Set ESXi Shell timeout
+      community.vmware.vmware_host_config_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        options:
+          'UserVars.ESXiShellTimeOut': 300
+      tags: ssh
+
+    - name: Disable ESXi Shell by default
+      community.vmware.vmware_host_service_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        service_name: TSM
+        state: stop
+        service_policy: off
+      tags: ssh
+
+    - name: Disable SSH by default
+      community.vmware.vmware_host_service_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        service_name: TSM-SSH
+        state: stop
+        service_policy: off
+      tags: ssh
+
+    ##########################################################################
+    # NTP CONFIGURATION
+    ##########################################################################
+
+#    - name: Configure NTP servers
+#      community.vmware.vmware_host_ntp:
+#        hostname: "{{ vcenter_hostname }}"
+#        username: "{{ vcenter_username }}"
+#        password: "{{ vcenter_password }}"
+#        validate_certs: "{{ validate_certs }}"
+#        esxi_hostname: "{{ inventory_hostname }}"
+#        ntp_servers:
+#          - 192.168.1.1
+#          - 192.168.1.2
+#        state: present
+#      tags: ntp
+
+#    - name: Enable NTP service
+#      community.vmware.vmware_host_service_manager:
+#        hostname: "{{ vcenter_hostname }}"
+#        username: "{{ vcenter_username }}"
+#        password: "{{ vcenter_password }}"
+#        validate_certs: "{{ validate_certs }}"
+#        esxi_hostname: "{{ inventory_hostname }}"
+#        service_name: ntpd
+#        state: started
+#        service_policy: on
+#      tags: ntp
+
+    ##########################################################################
+    # SYSLOG CONFIGURATION
+    ##########################################################################
+
+    - name: Configure syslog forwarding
+      community.vmware.vmware_host_config_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        options:
+          'Syslog.global.logHost': 'udp://192.168.1.219:514'
+      tags: logging
+      when: vault_syslog_server is defined
+
+    ##########################################################################
+    # FIREWALL CONFIGURATION
+    ##########################################################################
+
+#    - name: Set firewall default policy to deny
+#      community.vmware.vmware_host_firewall_manager:
+#        hostname: "{{ vcenter_hostname }}"
+#        username: "{{ vcenter_username }}"
+#        password: "{{ vcenter_password }}"
+#        validate_certs: "{{ validate_certs }}"
+#        esxi_hostname: "{{ inventory_hostname }}"
+#        rules:
+#          - name: sshServer
+#            enabled: false
+#          - name: esxiShell
+#            enabled: false
+#      tags: firewall
+
+    ##########################################################################
+    # SECURITY SETTINGS
+    ##########################################################################
+
+    - name: Disable MOB (Managed Object Browser)
+      community.vmware.vmware_host_config_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        options:
+          'Config.HostAgent.plugins.solo.enableMob': false
+      tags: security
+
+    - name: Set account lockout policy
+      community.vmware.vmware_host_config_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        options:
+          'Security.AccountLockFailures': 5
+          'Security.AccountUnlockTime': 900
+      tags: security
+
+    - name: Set password complexity
+      community.vmware.vmware_host_config_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        options:
+          'Security.PasswordQualityControl': 'retry=3 min=disabled,disabled,disabled,disabled,15'
+      tags: security
+
+    ##########################################################################
+    # VM SECURITY SETTINGS
+    ##########################################################################
+
+#    - name: Disable VM copy/paste operations
+#      community.vmware.vmware_host_config_manager:
+#        hostname: "{{ vcenter_hostname }}"
+#        username: "{{ vcenter_username }}"
+#        password: "{{ vcenter_password }}"
+#        validate_certs: "{{ validate_certs }}"
+#        esxi_hostname: "{{ inventory_hostname }}"
+#        options:
+#          'isolation.tools.copy.disable': true
+#          'isolation.tools.paste.disable': true
+#      tags: vm_security
+
+#    - name: Disable VM disk shrinking
+#      community.vmware.vmware_host_config_manager:
+#        hostname: "{{ vcenter_hostname }}"
+#        username: "{{ vcenter_username }}"
+#        password: "{{ vcenter_password }}"
+#        validate_certs: "{{ validate_certs }}"
+#        esxi_hostname: "{{ inventory_hostname }}"
+#        options:
+#          'isolation.tools.diskShrink.disable': true
+#          'isolation.tools.diskWiper.disable': true
+#      tags: vm_security
+
+    ##########################################################################
+    # VSWITCH SECURITY
+    ##########################################################################
+
+    - name: Harden vSwitch security policies
+      community.vmware.vmware_vswitch:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        switch: vSwitch0
+        security:
+          promiscuous_mode: false
+          forged_transmits: false
+          mac_changes: false
+        state: present
+      tags: vswitch
+
+    ##########################################################################
+    # ACCEPTANCE LEVEL
+    ##########################################################################
+
+#    - name: Set acceptance level to PartnerSupported minimum
+#      community.vmware.vmware_host_acceptance:
+#        hostname: "{{ vcenter_hostname }}"
+#        username: "{{ vcenter_username }}"
+#        password: "{{ vcenter_password }}"
+#        validate_certs: "{{ validate_certs }}"
+#        esxi_hostname: "{{ inventory_hostname }}"
+#        acceptance_level: partner
+#        state: present
+#      tags: acceptance
+
+    ##########################################################################
+    # ADVANCED SETTINGS
+    ##########################################################################
+
+    - name: Configure DCUI timeout
+      community.vmware.vmware_host_config_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        options:
+          'UserVars.DcuiTimeOut': 600
+      tags: advanced
+
+    - name: Suppress shell warning
+      community.vmware.vmware_host_config_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        options:
+          'UserVars.SuppressShellWarning': 0
+      tags: advanced
+
+    ##########################################################################
+    # BANNER
+    ##########################################################################
+
+    - name: Set login banner
+      community.vmware.vmware_host_config_manager:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+        esxi_hostname: "{{ inventory_hostname }}"
+        options:
+          'Annotations.WelcomeMessage': 'Unauthorized access prohibited. All activity is monitored and logged.'
+      tags: banner

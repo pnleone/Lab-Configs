@@ -1,0 +1,249 @@
+---
+###############################################################################
+# linux_hardening_docker_safe.yml
+# Purpose: SSH and system hardening - DOCKER-AWARE VERSION
+#
+# This version automatically detects Docker hosts and keeps IP forwarding enabled
+#
+# What this does:
+#   - Removes SSH root login
+#   - Disables password auth (key-only) 
+#   - NO AllowUsers restriction
+#   - KEEPS TCP/Agent forwarding enabled
+#   - Detects Docker and preserves IP forwarding
+#   - Applies safe kernel parameters
+#   - Sets login banner
+#   - Does NOT lock service accounts
+#
+# Run: ansible-playbook linux_hardening_docker_safe.yml -i inventory/hosts.ini --ask-vault-pass
+###############################################################################
+
+- name: Docker-aware host hardening
+  hosts: linux
+  become: true
+  gather_facts: true
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: "{{ ssh_service }}"
+        state: restarted
+
+    - name: reload sysctl
+      command: sysctl --system
+      ignore_errors: true
+
+  pre_tasks:
+
+    - name: Set SSH service name based on OS
+      set_fact:
+        ssh_service: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+
+    - name: Detect if Docker is installed
+      stat:
+        path: /usr/bin/docker
+      register: docker_check
+
+    - name: Set Docker presence fact
+      set_fact:
+        has_docker: "{{ docker_check.stat.exists }}"
+
+    - name: Display Docker detection result
+      debug:
+        msg: "Docker detected: {{ has_docker }} - IP forwarding will be {{ 'ENABLED' if has_docker else 'DISABLED' }}"
+
+  tasks:
+
+    ##########################################################################
+    # SSH HARDENING - SAFE SETTINGS
+    ##########################################################################
+
+    - name: Harden sshd_config (Docker-safe lab settings)
+      tags: ssh
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?{{ item.key }}\s'
+        line: '{{ item.key }} {{ item.value }}'
+        state: present
+        backup: true
+      loop:
+        # Disable root login (security)
+        - { key: 'PermitRootLogin',              value: 'no' }
+        
+        # Key-based auth only (good security, emergency: set to 'yes')
+        - { key: 'PasswordAuthentication',       value: 'no' }
+        - { key: 'PubkeyAuthentication',         value: 'yes' }
+        - { key: 'AuthorizedKeysFile',           value: '.ssh/authorized_keys' }
+        - { key: 'PermitEmptyPasswords',         value: 'no' }
+        - { key: 'ChallengeResponseAuthentication', value: 'no' }
+        
+        # PAM enabled (needed for some systems)
+        - { key: 'UsePAM',                       value: 'yes' }
+        
+        # Disable X11 (rarely needed, security risk)
+        - { key: 'X11Forwarding',                value: 'no' }
+        
+        # KEEP ENABLED - Applications need these
+        - { key: 'AllowAgentForwarding',         value: 'yes' }  # Git, deployments
+        - { key: 'AllowTcpForwarding',           value: 'yes' }  # Docker, tunnels
+        
+        # Reasonable timeouts
+        - { key: 'MaxAuthTries',                 value: '6' }    # Default
+        - { key: 'LoginGraceTime',               value: '60' }   # 1 minute
+        - { key: 'ClientAliveInterval',          value: '300' }  # 5 minutes
+        - { key: 'ClientAliveCountMax',          value: '3' }    # 3 chances
+      notify: restart sshd
+
+    - name: Remove AllowUsers restriction if present
+      tags: ssh
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?AllowUsers\s'
+        state: absent
+        backup: true
+      notify: restart sshd
+
+    ##########################################################################
+    # LOGIN BANNER
+    ##########################################################################
+
+    - name: Set /etc/issue.net banner
+      tags: ssh, banner
+      ansible.builtin.copy:
+        content: |
+          ############################################################
+          #  Homelab, shadowitlab.com                                #
+          #  AUTHORIZED ACCESS ONLY                                  #
+          #  Unauthorized access is prohibited and will be           #
+          #  monitored, logged, and reported.                        #
+          ############################################################
+        dest: /etc/issue.net
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable SSH banner in sshd_config
+      tags: ssh, banner
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?Banner\s'
+        line: 'Banner /etc/issue.net'
+        state: present
+      notify: restart sshd
+
+    ##########################################################################
+    # KERNEL HARDENING - DOCKER-AWARE
+    ##########################################################################
+
+    - name: Apply Docker-safe kernel parameters
+      tags: sysctl, kernel
+      ansible.posix.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        sysctl_set: true
+        state: present
+        reload: false
+      loop:
+        # IP FORWARDING - Enable for Docker hosts, disable otherwise
+        - { key: 'net.ipv4.ip_forward',                    value: "{{ '1' if has_docker else '0' }}" }
+        
+        # Network security (safe for all hosts)
+        - { key: 'net.ipv4.tcp_syncookies',                value: '1' }  # SYN flood protection
+        - { key: 'net.ipv4.icmp_echo_ignore_broadcasts',   value: '1' }  # Ignore broadcast pings
+        
+        # Kernel security (safe for all hosts)
+        - { key: 'fs.suid_dumpable',                       value: '0' }  # No core dumps for setuid
+        - { key: 'kernel.dmesg_restrict',                  value: '1' }  # Restrict dmesg
+      ignore_errors: true
+      notify: reload sysctl
+
+    - name: Ensure IP forwarding persists in sysctl.conf for Docker hosts
+      tags: sysctl, kernel, docker
+      lineinfile:
+        path: /etc/sysctl.conf
+        regexp: '^#?net.ipv4.ip_forward'
+        line: 'net.ipv4.ip_forward = 1'
+        state: present
+      when: has_docker
+
+    ##########################################################################
+    # ACCOUNT SECURITY - SAFE APPROACH
+    ##########################################################################
+
+    - name: Lock only non-service system accounts
+      tags: accounts
+      ansible.builtin.user:
+        name: "{{ item }}"
+        password_lock: true
+      loop:
+        - daemon
+        - bin
+        - sys
+        - games
+        - man
+        - uucp
+        - nobody
+        - gnats
+      ignore_errors: true
+
+    ##########################################################################
+    # DOCKER-SPECIFIC CHECKS
+    ##########################################################################
+
+    - name: Verify Docker service is running (if Docker detected)
+      tags: docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+      when: has_docker
+
+    - name: Check Docker containers are running (if Docker detected)
+      tags: docker
+      shell: docker ps --format "{{'{{'}} .Names {{'}}'}}" 2>/dev/null || echo "No containers"
+      register: docker_containers
+      changed_when: false
+      when: has_docker
+
+    - name: Display Docker container status
+      tags: docker
+      debug:
+        msg: "Running containers: {{ docker_containers.stdout_lines }}"
+      when: has_docker
+
+    ##########################################################################
+    # DISPLAY SUMMARY
+    ##########################################################################
+
+    - name: Display hardening summary
+      debug:
+        msg: |
+          ============================================================
+          DOCKER-AWARE HARDENING APPLIED
+          ============================================================
+          
+          ✅ SSH hardened:
+             - Root login disabled
+             - Password auth disabled (key-only)
+             - TCP forwarding ENABLED (Docker safe)
+             - Agent forwarding ENABLED (Git safe)
+             - NO user restrictions (all users can connect)
+          
+          ✅ Kernel parameters:
+             {{ '- IP forwarding ENABLED (Docker detected)' if has_docker else '- IP forwarding DISABLED (no Docker)' }}
+             - SYN flood protection enabled
+             - Broadcast ping ignored
+             - Core dumps disabled for setuid
+             - dmesg restricted
+          
+          ✅ Service accounts:
+             - www-data, mail, nginx, proxy NOT locked
+             - Only truly unused accounts locked
+          
+          {{ '✅ Docker status: ' + (docker_containers.stdout_lines | length | string) + ' containers running' if has_docker else 'ℹ️  No Docker detected on this host' }}
+          
+          ⚠️  Password authentication is DISABLED
+             Emergency access: Set PasswordAuthentication yes
+          
+          ============================================================
+      run_once: true

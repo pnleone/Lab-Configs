@@ -1,0 +1,182 @@
+---
+###############################################################################
+# diagnose_hardening_issues.yml
+# Purpose: Identify which hardening settings are causing application issues
+#
+# This playbook checks:
+#   - Current SSH configuration
+#   - Active network connections
+#   - Application service status
+#   - Port forwarding requirements
+#   - User account status
+#
+# Run: ansible-playbook diagnose_hardening_issues.yml -i inventory/hosts.ini --ask-vault-pass
+###############################################################################
+
+- name: Diagnose hardening-related issues
+  hosts: linux
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    ##########################################################################
+    # CHECK SSH CONFIGURATION
+    ##########################################################################
+
+    - name: Check current SSH settings
+      tags: ssh_check
+      shell: grep -E "^(AllowUsers|AllowTcpForwarding|AllowAgentForwarding|PasswordAuthentication|PermitRootLogin)" /etc/ssh/sshd_config || echo "Not set"
+      register: ssh_config
+      changed_when: false
+
+    - name: Display SSH configuration
+      tags: ssh_check
+      debug:
+        msg: |
+          Current SSH Settings:
+          {{ ssh_config.stdout_lines | join('\n') }}
+
+    ##########################################################################
+    # CHECK ACTIVE CONNECTIONS
+    ##########################################################################
+
+    - name: Check established SSH connections
+      tags: connections
+      shell: ss -tnp | grep :22 | grep ESTAB
+      register: ssh_connections
+      changed_when: false
+      failed_when: false
+
+    - name: Display active SSH connections
+      tags: connections
+      debug:
+        msg: "{{ ssh_connections.stdout_lines if ssh_connections.stdout_lines else 'No active SSH connections' }}"
+
+    - name: Check listening services
+      tags: connections
+      shell: ss -tlnp | grep LISTEN
+      register: listening_services
+      changed_when: false
+
+    - name: Display listening services
+      tags: connections
+      debug:
+        msg: "{{ listening_services.stdout_lines }}"
+
+    ##########################################################################
+    # CHECK APPLICATION SERVICES
+    ##########################################################################
+
+    - name: Check Docker service status
+      tags: services
+      shell: systemctl is-active docker || echo "not installed"
+      register: docker_status
+      changed_when: false
+      failed_when: false
+
+    - name: Check for running containers
+      tags: services
+      shell: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "Docker not available"
+      register: docker_containers
+      changed_when: false
+      failed_when: false
+
+    - name: Display Docker status
+      tags: services
+      debug:
+        msg: |
+          Docker Status: {{ docker_status.stdout }}
+          Running Containers:
+          {{ docker_containers.stdout }}
+
+    ##########################################################################
+    # CHECK KERNEL PARAMETERS
+    ##########################################################################
+
+    - name: Check critical kernel parameters
+      tags: sysctl_check
+      shell: |
+        echo "IP Forwarding: $(sysctl -n net.ipv4.ip_forward)"
+        echo "TCP SYN Cookies: $(sysctl -n net.ipv4.tcp_syncookies)"
+        echo "Accept Redirects: $(sysctl -n net.ipv4.conf.all.accept_redirects)"
+        echo "Send Redirects: $(sysctl -n net.ipv4.conf.all.send_redirects)"
+      register: kernel_params
+      changed_when: false
+
+    - name: Display kernel parameters
+      tags: sysctl_check
+      debug:
+        msg: "{{ kernel_params.stdout_lines }}"
+
+    ##########################################################################
+    # CHECK USER ACCOUNTS
+    ##########################################################################
+
+    - name: Check locked system accounts
+      tags: accounts
+      shell: |
+        for user in www-data mail nginx proxy; do
+          if id $user &>/dev/null; then
+            passwd -S $user 2>/dev/null | grep -q "L" && echo "$user: LOCKED" || echo "$user: UNLOCKED"
+          fi
+        done
+      register: account_status
+      changed_when: false
+      failed_when: false
+
+    - name: Display account status
+      tags: accounts
+      debug:
+        msg: "{{ account_status.stdout_lines if account_status.stdout_lines else 'No service accounts checked' }}"
+
+    ##########################################################################
+    # COMMON ISSUE DETECTION
+    ##########################################################################
+
+    - name: Detect common hardening issues
+      tags: detection
+      debug:
+        msg: |
+          ============================================================
+          POTENTIAL ISSUES DETECTED:
+          ============================================================
+          
+          {% if 'AllowUsers' in ssh_config.stdout %}
+          ⚠️  SSH AllowUsers is restricting access
+             Current: {{ ssh_config.stdout | regex_search('AllowUsers.*') }}
+             Impact: Only listed users can SSH in
+             Fix: Add required users or remove restriction
+          {% endif %}
+          
+          {% if 'AllowTcpForwarding no' in ssh_config.stdout %}
+          ⚠️  TCP Forwarding is DISABLED
+             Impact: Port forwarding won't work (affects tunnels, some apps)
+             Fix: Set AllowTcpForwarding yes
+          {% endif %}
+          
+          {% if 'AllowAgentForwarding no' in ssh_config.stdout %}
+          ⚠️  Agent Forwarding is DISABLED
+             Impact: SSH key forwarding won't work (affects Git, deployments)
+             Fix: Set AllowAgentForwarding yes
+          {% endif %}
+          
+          {% if 'PasswordAuthentication no' in ssh_config.stdout %}
+          ℹ️  Password Authentication is DISABLED
+             Impact: Must use SSH keys (this is good security)
+             Fix: Only re-enable if absolutely necessary
+          {% endif %}
+          
+          {% if docker_status.stdout == 'active' and 'AllowTcpForwarding no' in ssh_config.stdout %}
+          ⚠️  DOCKER + NO TCP FORWARDING
+             Impact: Docker port mappings may not work properly
+             Fix: Set AllowTcpForwarding yes
+          {% endif %}
+          
+          {% if 'www-data: LOCKED' in account_status.stdout %}
+          ⚠️  www-data account is LOCKED
+             Impact: Web servers may have issues
+             Fix: Unlock www-data if running Apache/Nginx
+          {% endif %}
+          
+          ============================================================

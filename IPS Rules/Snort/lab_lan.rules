@@ -1,0 +1,51 @@
+#############################################
+# LAB_LAN1 Snort Rules
+# Network: 192.168.100.0/24
+#############################################
+
+# ====== SSH / LINUX ======
+
+alert tcp any any -> 192.168.100.0/24 22 \
+(msg:"LAB1: SSH Brute Force Attempt"; flags:S; detection_filter:track by_src, count 5, seconds 60; sid:910001; rev:2;)
+
+alert tcp 192.168.2.0/24 any -> 192.168.100.0/24 22 \
+(msg:"LAB1: SSH Attempt from EXT_LAN"; sid:910002; rev:1;)
+
+alert tcp any any -> 192.168.100.0/24 22 \
+(msg:"LAB1: sudo Keyword in SSH Session"; content:"sudo"; sid:910003; rev:1;)
+
+
+# ====== RECON / SCANNING ======
+
+alert tcp any any -> 192.168.100.0/24 any \
+(msg:"LAB1: Nmap OS Detection Scan"; content:"|4E 4D 41 50|"; sid:910004; rev:1;)
+
+alert tcp 192.168.100.0/24 any -> 192.168.1.0/24 any \
+(msg:"LAB1: LAB → PROD Port Scan"; flags:S; threshold:type both, track by_src, count 20, seconds 10; sid:900008; rev:1;)
+
+
+# ====== LATERAL MOVEMENT (TONED DOWN) ======
+
+alert tcp 192.168.100.0/24 any -> 192.168.1.0/24 [22,135,139,445,3389] \
+(msg:"LAB1: LAB → PROD Unauthorized High-Risk Port"; sid:910005; rev:3;)
+
+alert ip [10.20.0.0/24,192.168.3.0/24] any -> 192.168.100.0/24 any \
+(msg:"LAB1: ISO → LAB1 Traffic (Policy Violation)"; sid:910006; rev:1;)
+
+
+# ====== SMB / NETBIOS ======
+
+alert tcp any any -> 192.168.100.0/24 445 \
+(msg:"LAB1: SMBv1 Detected"; content:"|FF 53 4D 42|"; depth:4; sid:910008; rev:1;)
+
+alert udp any any -> 192.168.100.0/24 137 \
+(msg:"LAB1: NetBIOS Query Flood"; threshold:type both, track by_src, count 20, seconds 10; sid:910009; rev:1;)
+
+
+# ====== TEST RULES ======
+
+alert icmp any any -> 192.168.1.254 any \
+(msg:"TEST: ICMP to pfSense VIP (LAB1)"; sid:910010; rev:1;)
+
+alert tcp any any -> 192.168.1.254 443 \
+(msg:"TEST: HTTPS to pfSense GUI (LAB1)"; sid:910011; rev:1;)

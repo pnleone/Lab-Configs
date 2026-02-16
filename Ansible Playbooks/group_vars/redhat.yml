@@ -1,0 +1,36 @@
+---
+
+ansible_become: true
+ansible_become_method: sudo
+ansible_become_password: "{{ vault_ansible_password }}"
+
+# group_vars/redhat.yml
+# Applies to: [redhat] group — RHEL, CentOS, Fedora
+# These variables take precedence over all.yml for RedHat-family hosts.
+
+###############################################################################
+# SSH
+###############################################################################
+ssh_service: sshd    # RedHat family uses 'sshd', Debian uses 'ssh'
+
+###############################################################################
+# APACHE / PHP (used by hostvars.yml and web server playbooks)
+###############################################################################
+apache_package: httpd
+apache_service: httpd
+php_package: php
+
+###############################################################################
+# UTILITY PACKAGES
+###############################################################################
+utility_packages_redhat:
+  - bind-utils        # provides: dig
+  - traceroute
+  - iputils           # provides: ping
+  - qemu-guest-agent
+
+
+
+
+
+

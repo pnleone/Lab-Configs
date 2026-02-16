@@ -1,0 +1,1708 @@
+---
+# Source: shuffle/charts/opensearch/templates/coordinating/networkpolicy.yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: shuffle-opensearch-coordinating
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/part-of: opensearch
+    app.kubernetes.io/component: coordinating-only
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: opensearch
+      app.kubernetes.io/component: coordinating-only
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - {}
+  ingress:
+    - ports:
+        - port: 9200
+        - port: 9300
+---
+# Source: shuffle/charts/opensearch/templates/dashboards/networkpolicy.yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: shuffle-opensearch-dashboards
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/part-of: opensearch
+    app.kubernetes.io/component: dashboards
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: opensearch
+      app.kubernetes.io/component: dashboards
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - {}
+  ingress:
+    - ports:
+        - port: 5601
+---
+# Source: shuffle/charts/opensearch/templates/data/networkpolicy.yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: shuffle-opensearch-data
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/part-of: opensearch
+    app.kubernetes.io/component: data
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: opensearch
+      app.kubernetes.io/component: data
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - {}
+  ingress:
+    - ports:
+        - port: 9200
+        - port: 9300
+---
+# Source: shuffle/charts/opensearch/templates/ingest/networkpolicy.yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: shuffle-opensearch-ingest
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/part-of: opensearch
+    app.kubernetes.io/component: ingest
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: opensearch
+      app.kubernetes.io/component: ingest
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - {}
+  ingress:
+    - ports:
+        - port: 9200
+        - port: 9300
+---
+# Source: shuffle/charts/opensearch/templates/master/networkpolicy.yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: shuffle-opensearch-master
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/part-of: opensearch
+    app.kubernetes.io/component: master
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: opensearch
+      app.kubernetes.io/component: master
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - {}
+  ingress:
+    - ports:
+        - port: 9200
+        - port: 9300
+---
+# Source: shuffle/templates/backend/backend-network-policy.yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: shuffle-backend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: backend
+    io.kompose.service: backend
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: shuffle
+      app.kubernetes.io/component: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - {}
+  ingress:
+    - ports:
+        - port: 5001
+          protocol: TCP
+---
+# Source: shuffle/templates/frontend/frontend-network-policy.yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: shuffle-frontend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: frontend
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: shuffle
+      app.kubernetes.io/component: frontend
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - {}
+  ingress:
+    
+    - ports:
+        - port: 80
+        - port: 443
+---
+# Source: shuffle/templates/orborus/orborus-network-policy.yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: shuffle-orborus
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: orborus
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: shuffle
+      app.kubernetes.io/component: orborus
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - {}
+  ingress:
+---
+# Source: shuffle/templates/shuffle-app/shuffle-app-network-policy.yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: shuffle-app
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: app
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: shuffle-app
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - {}
+  ingress:
+    - ports:
+        - port: 80
+          protocol: TCP
+---
+# Source: shuffle/templates/shuffle-worker/shuffle-worker-network-policy.yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: shuffle-worker
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: worker
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: shuffle-worker
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - {}
+  ingress:
+    - ports:
+        - port: 33333
+          protocol: TCP
+---
+# Source: shuffle/charts/opensearch/templates/data/pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: shuffle-opensearch-data
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/component: data
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: opensearch
+      app.kubernetes.io/component: data
+---
+# Source: shuffle/charts/opensearch/templates/master/pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: shuffle-opensearch-master
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/component: master
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: opensearch
+      app.kubernetes.io/component: master
+---
+# Source: shuffle/templates/backend/backend-pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: shuffle-backend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: backend
+    io.kompose.service: backend
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: shuffle
+      app.kubernetes.io/component: backend
+---
+# Source: shuffle/templates/frontend/frontend-pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: shuffle-frontend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: frontend
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: shuffle
+      app.kubernetes.io/component: frontend
+---
+# Source: shuffle/templates/orborus/orborus-pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: shuffle-orborus
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: orborus
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: shuffle
+      app.kubernetes.io/component: orborus
+---
+# Source: shuffle/templates/backend/backend-service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shuffle-backend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: backend
+    io.kompose.service: backend
+automountServiceAccountToken: true
+---
+# Source: shuffle/templates/frontend/frontend-service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shuffle-frontend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: frontend
+automountServiceAccountToken: true
+---
+# Source: shuffle/templates/orborus/orborus-service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shuffle-orborus
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: orborus
+automountServiceAccountToken: true
+---
+# Source: shuffle/templates/shuffle-app/shuffle-app-service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shuffle-app
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: app
+automountServiceAccountToken: true
+---
+# Source: shuffle/templates/shuffle-worker/shuffle-worker-service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shuffle-worker
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: worker
+automountServiceAccountToken: true
+---
+# Source: shuffle/templates/backend/backend-cm-env.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuffle-backend-env
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: backend
+    io.kompose.service: backend
+data:
+  BACKEND_PORT: "5001"
+  BASE_URL: "http://shuffle-backend.shuffle.svc.cluster.local:5001"
+  ORG_ID: "Shuffle"
+  SHUFFLE_APP_DOWNLOAD_LOCATION: "https://github.com/shuffle/python-apps"
+  SHUFFLE_DOWNLOAD_AUTH_BRANCH: "master"
+  SHUFFLE_APP_FORCE_UPDATE: "false"
+  SHUFFLE_CHAT_DISABLED: "true"
+  # Sets backend_url parameter for workflow execution to the cluster-internal shuffle-backend address
+  SHUFFLE_CLOUDRUN_URL: "http://shuffle-backend.shuffle.svc.cluster.local:5001"
+  SHUFFLE_OPENSEARCH_URL: http://shuffle-opensearch:9200
+  SHUFFLE_OPENSEARCH_USERNAME: "admin"
+  SHUFFLE_OPENSEARCH_CERTIFICATE_FILE: ""
+  SHUFFLE_OPENSEARCH_SKIPSSL_VERIFY: "false"
+  SHUFFLE_OPENSEARCH_INDEX_PREFIX: ""
+  SHUFFLE_RERUN_SCHEDULE: "300"
+  TZ: "Europe/Berlin"
+  REGISTRY_URL: ""
+---
+# Source: shuffle/templates/frontend/frontend-cm-env.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuffle-frontend-env
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: frontend
+data:
+---
+# Source: shuffle/templates/orborus/orborus-cm-env.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuffle-orborus-env
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: orborus
+data:
+  ENVIRONMENT_NAME: "Shuffle"
+  ORG_ID: "Shuffle"
+  TZ: "Europe/Berlin"
+  BASE_URL: "http://shuffle-backend.shuffle.svc.cluster.local:5001"
+  KUBERNETES_NAMESPACE: "shuffle"
+  REGISTRY_URL: ""
+
+  # Shuffle worker configuration
+  SHUFFLE_WORKER_IMAGE: "ghcr.io/shuffle/shuffle-worker:2.1.3"
+  SHUFFLE_WORKER_SERVICE_ACCOUNT_NAME: "shuffle-worker"
+  SHUFFLE_WORKER_POD_SECURITY_CONTEXT: "{\"fsGroup\":1001,\"fsGroupChangePolicy\":\"Always\",\"supplementalGroups\":[],\"sysctls\":[]}"
+  SHUFFLE_WORKER_CONTAINER_SECURITY_CONTEXT: "{\"allowPrivilegeEscalation\":false,\"capabilities\":{\"drop\":[\"ALL\"]},\"privileged\":false,\"readOnlyRootFilesystem\":true,\"runAsGroup\":1001,\"runAsNonRoot\":true,\"runAsUser\":1001,\"seLinuxOptions\":{},\"seccompProfile\":{\"type\":\"RuntimeDefault\"}}"
+
+  # Shuffle worker resources
+  SHUFFLE_WORKER_CPU_REQUEST: "100m"
+  SHUFFLE_WORKER_MEMORY_REQUEST: "128Mi"
+  SHUFFLE_WORKER_EPHEMERAL_STORAGE_REQUEST: "50Mi"
+  SHUFFLE_WORKER_CPU_LIMIT: "150m"
+  SHUFFLE_WORKER_MEMORY_LIMIT: "192Mi"
+  SHUFFLE_WORKER_EPHEMERAL_STORAGE_LIMIT: "2Gi"
+
+  # Shuffle app configuration
+  SHUFFLE_APP_EXPOSED_PORT: "80"
+  SHUFFLE_APP_SERVICE_ACCOUNT_NAME: "shuffle-app"
+  SHUFFLE_APP_POD_SECURITY_CONTEXT: "{\"fsGroup\":1001,\"fsGroupChangePolicy\":\"Always\",\"supplementalGroups\":[],\"sysctls\":[]}"
+  SHUFFLE_APP_CONTAINER_SECURITY_CONTEXT: "{\"allowPrivilegeEscalation\":false,\"capabilities\":{\"drop\":[\"ALL\"]},\"privileged\":false,\"readOnlyRootFilesystem\":true,\"runAsGroup\":1001,\"runAsNonRoot\":true,\"runAsUser\":1001,\"seLinuxOptions\":{},\"seccompProfile\":{\"type\":\"RuntimeDefault\"}}"
+
+  # Shuffle app resources
+  SHUFFLE_APP_CPU_REQUEST: "100m"
+  SHUFFLE_APP_MEMORY_REQUEST: "128Mi"
+  SHUFFLE_APP_EPHEMERAL_STORAGE_REQUEST: "50Mi"
+  SHUFFLE_APP_CPU_LIMIT: "150m"
+  SHUFFLE_APP_MEMORY_LIMIT: "192Mi"
+  SHUFFLE_APP_EPHEMERAL_STORAGE_LIMIT: "2Gi"
+---
+# Source: shuffle/templates/backend/backend-apps-claim-pvc.yaml
+# This PVC is always enabled, regardless of .Values.persistence.enabled,
+# as app building does not work without it.
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: backend-apps-claim # Hardcoded by shuffle-app-builder
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: backend
+    io.kompose.service: backend
+  annotations:
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Source: shuffle/templates/backend/backend-apps-pvc.yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: shuffle-backend-apps
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: backend
+    io.kompose.service: backend
+  annotations:
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Source: shuffle/templates/backend/backend-files-pvc.yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: shuffle-backend-files
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: backend
+    io.kompose.service: backend
+  annotations:
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Source: shuffle/templates/backend/backend-role.yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: shuffle-backend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: backend
+    io.kompose.service: backend
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "create", "delete"]
+---
+# Source: shuffle/templates/orborus/orborus-role.yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: shuffle-orborus
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: orborus
+rules:
+  - verbs:
+      - list
+      - create
+      - delete
+    apiGroups:
+      - ''
+    resources:
+      - pods
+      - services
+  - verbs:
+      - list
+      - create
+      - delete
+    apiGroups:
+      - apps
+    resources:
+      - deployments
+---
+# Source: shuffle/templates/shuffle-app/shuffle-app-role.yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: shuffle-app
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: app
+rules:
+  - apiGroups: [""]
+    resources: [""]
+    verbs: [""]
+---
+# Source: shuffle/templates/shuffle-worker/shuffle-worker-role.yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: shuffle-worker
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: worker
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list", "delete"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["create"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["list", "create"]
+---
+# Source: shuffle/templates/backend/backend-role-binding.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: shuffle-backend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: backend
+    io.kompose.service: backend
+subjects:
+  - kind: ServiceAccount
+    name: shuffle-backend
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: shuffle-backend
+---
+# Source: shuffle/templates/orborus/orborus-role-binding.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: shuffle-orborus
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: orborus
+subjects:
+  - kind: ServiceAccount
+    name: shuffle-orborus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: shuffle-orborus
+---
+# Source: shuffle/templates/shuffle-app/shuffle-app-role-binding.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: shuffle-app
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: app
+subjects:
+  - kind: ServiceAccount
+    name: shuffle-app
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: shuffle-app
+---
+# Source: shuffle/templates/shuffle-worker/shuffle-worker-role-binding.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: shuffle-worker
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: worker
+subjects:
+  - kind: ServiceAccount
+    name: shuffle-worker
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: shuffle-worker
+---
+# Source: shuffle/charts/opensearch/templates/data/svc-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: shuffle-opensearch-data-hl
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/component: data
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: tcp-rest-api
+      port: 9200
+      targetPort: rest-api
+    - name: tcp-transport
+      port: 9300
+      targetPort: transport
+  selector:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/component: data
+  trafficDistribution: PreferClose
+---
+# Source: shuffle/charts/opensearch/templates/master/svc-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: shuffle-opensearch-master-hl
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/component: master
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: tcp-rest-api
+      port: 9200
+      targetPort: rest-api
+    - name: tcp-transport
+      port: 9300
+      targetPort: transport
+  selector:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/component: master
+  trafficDistribution: PreferClose
+---
+# Source: shuffle/charts/opensearch/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: shuffle-opensearch
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/component: master
+spec:
+  type: ClusterIP
+  sessionAffinity: None
+  ports:
+    - name: tcp-rest-api
+      port: 9200
+      targetPort: rest-api
+      nodePort: null
+    - name: tcp-transport
+      port: 9300
+      nodePort: null
+  selector:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/component: master
+---
+# Source: shuffle/templates/backend/backend-svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: shuffle-backend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: backend
+    io.kompose.service: backend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 5001
+      targetPort: http
+      protocol: TCP
+      appProtocol: http
+  selector:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/component: backend
+---
+# Source: shuffle/templates/frontend/frontend-svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: shuffle-frontend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+      appProtocol: http
+    - name: https
+      port: 443
+      targetPort: https
+      protocol: TCP
+      appProtocol: https
+  selector:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/component: frontend
+---
+# Source: shuffle/templates/backend/backend-dpl.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuffle-backend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: backend
+    io.kompose.service: backend
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: shuffle
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: shuffle
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: shuffle
+        app.kubernetes.io/version: 2.1.3
+        helm.sh/chart: shuffle-2.1.3
+        app.kubernetes.io/component: backend
+        io.kompose.service: backend
+    spec:
+      
+      serviceAccountName: shuffle-backend
+      automountServiceAccountToken: true
+      affinity:
+        podAffinity:
+          
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: shuffle
+                    app.kubernetes.io/name: shuffle
+                    app.kubernetes.io/component: backend
+                topologyKey: kubernetes.io/hostname
+              weight: 1
+        nodeAffinity:
+          
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: Always
+        supplementalGroups: []
+        sysctls: []
+      initContainers:
+      containers:
+        - name: backend
+          image: ghcr.io/shuffle/shuffle-backend:2.1.3
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 1001
+            runAsNonRoot: true
+            runAsUser: 1001
+            seLinuxOptions: {}
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: RUNNING_MODE
+              value: kubernetes
+            - name: IS_KUBERNETES
+              value: "true"
+            - name: SHUFFLE_APP_HOTLOAD_FOLDER
+              value: /shuffle-apps
+            - name: SHUFFLE_FILE_LOCATION
+              value: /shuffle-files
+          envFrom:
+            - configMapRef:
+                name: shuffle-backend-env
+          resources:
+            limits:
+              cpu: 750m
+              ephemeral-storage: 2Gi
+              memory: 768Mi
+            requests:
+              cpu: 500m
+              ephemeral-storage: 50Mi
+              memory: 512Mi
+          ports:
+            - name: http
+              containerPort: 5001
+          volumeMounts:
+            - name: shuffle-app-builder
+              mountPath: /app/generated
+            - name: shuffle-apps
+              mountPath: /shuffle-apps
+            - name: shuffle-files
+              mountPath: /shuffle-files
+            - name: empty-dir
+              mountPath: /tmp
+              subPath: tmp-dir
+      volumes:
+        - name: empty-dir
+          emptyDir: {}
+        - name: shuffle-app-builder
+          persistentVolumeClaim:
+            claimName: backend-apps-claim
+        - name: shuffle-apps
+          persistentVolumeClaim:
+            claimName: shuffle-backend-apps
+        - name: shuffle-files
+          persistentVolumeClaim:
+            claimName: shuffle-backend-files
+---
+# Source: shuffle/templates/frontend/frontend-dpl.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuffle-frontend
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: shuffle
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: shuffle
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: shuffle
+        app.kubernetes.io/version: 2.1.3
+        helm.sh/chart: shuffle-2.1.3
+        app.kubernetes.io/component: frontend
+    spec:
+      
+      serviceAccountName: shuffle-frontend
+      automountServiceAccountToken: false
+      affinity:
+        podAffinity:
+          
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: shuffle
+                    app.kubernetes.io/name: shuffle
+                    app.kubernetes.io/component: frontend
+                topologyKey: kubernetes.io/hostname
+              weight: 1
+        nodeAffinity:
+          
+      initContainers:
+      containers:
+        - name: frontend
+          image: ghcr.io/shuffle/shuffle-frontend:2.1.3
+          imagePullPolicy: IfNotPresent
+          env:
+          envFrom:
+            - configMapRef:
+                name: shuffle-frontend-env
+          resources:
+            limits:
+              cpu: 150m
+              ephemeral-storage: 2Gi
+              memory: 192Mi
+            requests:
+              cpu: 100m
+              ephemeral-storage: 50Mi
+              memory: 128Mi
+          ports:
+            - name: http
+              containerPort: 80
+            - name: https
+              containerPort: 443
+          volumeMounts:
+            - name: empty-dir
+              mountPath: /tmp
+              subPath: tmp-dir
+      volumes:
+        - name: empty-dir
+          emptyDir: {}
+---
+# Source: shuffle/templates/orborus/orborus-dpl.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuffle-orborus
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: shuffle
+    app.kubernetes.io/version: 2.1.3
+    helm.sh/chart: shuffle-2.1.3
+    app.kubernetes.io/component: orborus
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: shuffle
+      app.kubernetes.io/component: orborus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: shuffle
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: shuffle
+        app.kubernetes.io/version: 2.1.3
+        helm.sh/chart: shuffle-2.1.3
+        app.kubernetes.io/component: orborus
+    spec:
+      
+      serviceAccountName: shuffle-orborus
+      automountServiceAccountToken: true
+      affinity:
+        podAffinity:
+          
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: shuffle
+                    app.kubernetes.io/name: shuffle
+                    app.kubernetes.io/component: orborus
+                topologyKey: kubernetes.io/hostname
+              weight: 1
+        nodeAffinity:
+          
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: Always
+        supplementalGroups: []
+        sysctls: []
+      initContainers:
+      containers:
+        - name: orborus
+          image: ghcr.io/shuffle/shuffle-orborus:nightly
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 1001
+            runAsNonRoot: true
+            runAsUser: 1001
+            seLinuxOptions: {}
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: RUNNING_MODE
+              value: kubernetes
+            - name: IS_KUBERNETES
+              value: "true"
+            - name: SHUFFLE_APP_SDK_TIMEOUT
+              value: "300"
+            - name: SHUFFLE_ORBORUS_EXCUTION_CONCURRENCY
+              value: "7"
+            - name: SHUFFLE_STATS_DISABLED
+              value: "true"
+            - name: KUBERNETES_NAMESPACE
+              value: shuffle
+            - name: SHUFFLE_BASE_IMAGE_NAME
+              value: frikky/shuffle
+          envFrom:
+            - configMapRef:
+                name: shuffle-orborus-env
+          resources:
+            limits:
+              cpu: 150m
+              ephemeral-storage: 2Gi
+              memory: 192Mi
+            requests:
+              cpu: 100m
+              ephemeral-storage: 50Mi
+              memory: 128Mi
+          ports:
+          volumeMounts:
+            - name: empty-dir
+              mountPath: /tmp
+              subPath: tmp-dir
+      volumes:
+        - name: empty-dir
+          emptyDir: {}
+---
+# Source: shuffle/charts/opensearch/templates/data/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: shuffle-opensearch-data
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/component: data
+    ## Istio Labels: https://istio.io/docs/ops/deployment/requirements/
+    app: data
+spec:
+  replicas: 1
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: opensearch
+      app.kubernetes.io/component: data
+  serviceName: shuffle-opensearch-data-hl
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: shuffle
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: opensearch
+        app.kubernetes.io/version: 3.2.0
+        helm.sh/chart: opensearch-2.0.10
+        app.kubernetes.io/component: data
+        ## Istio Labels: https://istio.io/docs/ops/deployment/requirements/
+        app: data
+      annotations:
+    spec:
+      serviceAccountName: default
+      
+      automountServiceAccountToken: false
+      affinity:
+        podAffinity:
+          
+        podAntiAffinity:
+          
+        nodeAffinity:
+          
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: Always
+        supplementalGroups: []
+        sysctls: []
+      initContainers:
+        
+        - name: copy-default-plugins
+          image: docker.io/bitnamilegacy/opensearch:3.2.0
+          imagePullPolicy: "IfNotPresent"
+          securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                      - ALL
+                    privileged: false
+                    readOnlyRootFilesystem: true
+                    runAsGroup: 1001
+                    runAsNonRoot: true
+                    runAsUser: 1001
+                    seLinuxOptions: {}
+                    seccompProfile:
+                      type: RuntimeDefault
+          resources:
+                    limits:
+                      cpu: 750m
+                      ephemeral-storage: 2Gi
+                      memory: 1536Mi
+                    requests:
+                      cpu: 500m
+                      ephemeral-storage: 50Mi
+                      memory: 1024Mi
+          command:
+            - /bin/bash
+          args:
+            - -ec
+            - |
+                . /opt/bitnami/scripts/liblog.sh
+                . /opt/bitnami/scripts/libfs.sh
+                . /opt/bitnami/scripts/opensearch-env.sh
+        
+                mkdir -p /emptydir/app-conf-dir /emptydir/app-plugins-dir
+                info "Copying directories to empty dir"
+        
+                if ! is_dir_empty "$DB_DEFAULT_CONF_DIR"; then
+                    info "Copying default configuration"
+                    cp -nr --preserve=mode "$DB_DEFAULT_CONF_DIR"/* /emptydir/app-conf-dir
+                fi
+                if ! is_dir_empty "$DB_DEFAULT_PLUGINS_DIR"; then
+                    info "Copying default plugins"
+                    cp -nr "$DB_DEFAULT_PLUGINS_DIR"/* /emptydir/app-plugins-dir
+                fi
+        
+                info "Copy operation completed"
+          volumeMounts:
+            - name: empty-dir
+              mountPath: /emptydir
+      containers:
+        - name: opensearch
+          image: docker.io/bitnamilegacy/opensearch:3.2.0
+          imagePullPolicy: "IfNotPresent"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 1001
+            runAsNonRoot: true
+            runAsUser: 1001
+            seLinuxOptions: {}
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: BITNAMI_DEBUG
+              value: "false"
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPENSEARCH_IS_DEDICATED_NODE
+              value: "yes"
+            - name: OPENSEARCH_NODE_ROLES
+              value: "data"
+            - name: OPENSEARCH_TRANSPORT_PORT_NUMBER
+              value: "9300"
+            - name: OPENSEARCH_HTTP_PORT_NUMBER
+              value: "9200"
+            - name: OPENSEARCH_CLUSTER_NAME
+              value: "open"
+            - name: OPENSEARCH_CLUSTER_HOSTS
+              value: "shuffle-opensearch-master-hl.shuffle.svc.cluster.local,shuffle-opensearch-data-hl.shuffle.svc.cluster.local,"
+            - name: OPENSEARCH_TOTAL_NODES
+              value: "2"
+            - name: OPENSEARCH_CLUSTER_MASTER_HOSTS
+              value: shuffle-opensearch-master-0 
+            - name: OPENSEARCH_MINIMUM_MASTER_NODES
+              value: "1"
+            - name: OPENSEARCH_ADVERTISED_HOSTNAME
+              value: "$(MY_POD_NAME).shuffle-opensearch-data-hl.shuffle.svc.cluster.local"
+            - name: OPENSEARCH_HEAP_SIZE
+              value: "1024m"
+          ports:
+            - name: rest-api
+              containerPort: 9200
+            - name: transport
+              containerPort: 9300
+          livenessProbe:
+            failureThreshold: 5
+            initialDelaySeconds: 180
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+            tcpSocket:
+              port: rest-api
+          readinessProbe:
+            failureThreshold: 5
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+            exec:
+              command:
+                - /opt/bitnami/scripts/opensearch/healthcheck.sh
+          resources:
+            limits:
+              cpu: 750m
+              ephemeral-storage: 2Gi
+              memory: 1536Mi
+            requests:
+              cpu: 500m
+              ephemeral-storage: 50Mi
+              memory: 1024Mi
+          volumeMounts:
+            - name: empty-dir
+              mountPath: /tmp
+              subPath: tmp-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/opensearch/config
+              subPath: app-conf-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/opensearch/tmp
+              subPath: app-tmp-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/opensearch/logs
+              subPath: app-logs-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/opensearch/plugins
+              subPath: app-plugins-dir
+            - name: data
+              mountPath: /bitnami/opensearch/data
+      volumes:
+        - name: empty-dir
+          emptyDir: {}
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: "data"
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: "8Gi"
+---
+# Source: shuffle/charts/opensearch/templates/master/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: shuffle-opensearch-master
+  namespace: "shuffle"
+  labels:
+    app.kubernetes.io/instance: shuffle
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: opensearch
+    app.kubernetes.io/version: 3.2.0
+    helm.sh/chart: opensearch-2.0.10
+    app.kubernetes.io/component: master
+    ## Istio Labels: https://istio.io/docs/ops/deployment/requirements/
+    app: master
+spec:
+  replicas: 1
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: shuffle
+      app.kubernetes.io/name: opensearch
+      app.kubernetes.io/component: master
+  serviceName: shuffle-opensearch-master-hl
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: shuffle
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: opensearch
+        app.kubernetes.io/version: 3.2.0
+        helm.sh/chart: opensearch-2.0.10
+        app.kubernetes.io/component: master
+        ## Istio Labels: https://istio.io/docs/ops/deployment/requirements/
+        app: master
+      annotations:
+    spec:
+      serviceAccountName: default
+      
+      automountServiceAccountToken: false
+      affinity:
+        podAffinity:
+          
+        podAntiAffinity:
+          
+        nodeAffinity:
+          
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: Always
+        supplementalGroups: []
+        sysctls: []
+      initContainers:
+        
+        - name: copy-default-plugins
+          image: docker.io/bitnamilegacy/opensearch:3.2.0
+          imagePullPolicy: "IfNotPresent"
+          securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                      - ALL
+                    privileged: false
+                    readOnlyRootFilesystem: true
+                    runAsGroup: 1001
+                    runAsNonRoot: true
+                    runAsUser: 1001
+                    seLinuxOptions: {}
+                    seccompProfile:
+                      type: RuntimeDefault
+          resources:
+                    limits:
+                      cpu: 750m
+                      ephemeral-storage: 2Gi
+                      memory: 1536Mi
+                    requests:
+                      cpu: 500m
+                      ephemeral-storage: 50Mi
+                      memory: 1024Mi
+          command:
+            - /bin/bash
+          args:
+            - -ec
+            - |
+                . /opt/bitnami/scripts/liblog.sh
+                . /opt/bitnami/scripts/libfs.sh
+                . /opt/bitnami/scripts/opensearch-env.sh
+        
+                mkdir -p /emptydir/app-conf-dir /emptydir/app-plugins-dir
+                info "Copying directories to empty dir"
+        
+                if ! is_dir_empty "$DB_DEFAULT_CONF_DIR"; then
+                    info "Copying default configuration"
+                    cp -nr --preserve=mode "$DB_DEFAULT_CONF_DIR"/* /emptydir/app-conf-dir
+                fi
+                if ! is_dir_empty "$DB_DEFAULT_PLUGINS_DIR"; then
+                    info "Copying default plugins"
+                    cp -nr "$DB_DEFAULT_PLUGINS_DIR"/* /emptydir/app-plugins-dir
+                fi
+        
+                info "Copy operation completed"
+          volumeMounts:
+            - name: empty-dir
+              mountPath: /emptydir
+      containers:
+        - name: opensearch
+          image: docker.io/bitnamilegacy/opensearch:3.2.0
+          imagePullPolicy: "IfNotPresent"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 1001
+            runAsNonRoot: true
+            runAsUser: 1001
+            seLinuxOptions: {}
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: BITNAMI_DEBUG
+              value: "false"
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPENSEARCH_IS_DEDICATED_NODE
+              value: "yes"
+            - name: OPENSEARCH_NODE_ROLES
+              value: "master"
+            - name: OPENSEARCH_TRANSPORT_PORT_NUMBER
+              value: "9300"
+            - name: OPENSEARCH_HTTP_PORT_NUMBER
+              value: "9200"
+            - name: OPENSEARCH_CLUSTER_NAME
+              value: "open"
+            - name: OPENSEARCH_CLUSTER_HOSTS
+              value: "shuffle-opensearch-master-hl.shuffle.svc.cluster.local,shuffle-opensearch-data-hl.shuffle.svc.cluster.local,"
+            - name: OPENSEARCH_TOTAL_NODES
+              value: "2"
+            - name: OPENSEARCH_CLUSTER_MASTER_HOSTS
+              value: shuffle-opensearch-master-0 
+            - name: OPENSEARCH_MINIMUM_MASTER_NODES
+              value: "1"
+            - name: OPENSEARCH_ADVERTISED_HOSTNAME
+              value: "$(MY_POD_NAME).shuffle-opensearch-master-hl.shuffle.svc.cluster.local"
+            - name: OPENSEARCH_HEAP_SIZE
+              value: "512m"
+          ports:
+            - name: rest-api
+              containerPort: 9200
+            - name: transport
+              containerPort: 9300
+          livenessProbe:
+            failureThreshold: 5
+            initialDelaySeconds: 180
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+            tcpSocket:
+              port: rest-api
+          readinessProbe:
+            failureThreshold: 5
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+            exec:
+              command:
+                - /opt/bitnami/scripts/opensearch/healthcheck.sh
+          resources:
+            limits:
+              cpu: 750m
+              ephemeral-storage: 2Gi
+              memory: 1536Mi
+            requests:
+              cpu: 500m
+              ephemeral-storage: 50Mi
+              memory: 1024Mi
+          volumeMounts:
+            - name: empty-dir
+              mountPath: /tmp
+              subPath: tmp-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/opensearch/config
+              subPath: app-conf-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/opensearch/tmp
+              subPath: app-tmp-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/opensearch/logs
+              subPath: app-logs-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/opensearch/plugins
+              subPath: app-plugins-dir
+            - name: data
+              mountPath: /bitnami/opensearch/data
+      volumes:
+        - name: empty-dir
+          emptyDir: {}
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: "data"
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: "8Gi"

@@ -1,0 +1,142 @@
+---
+###############################################################################
+# group_vars/all.yml
+# Applies to: every host in inventory
+# Purpose:    Single source of truth for shared variables
+#
+# Sensitive values live in vault.yml — never inline here.
+# Vault variable convention: vault_ prefix
+#
+# Vault workflow:
+#   Create:  ansible-vault create group_vars/vault.yml
+#   Edit:    ansible-vault edit group_vars/vault.yml
+#   Run:     ansible-playbook site.yml --ask-vault-pass
+#            ansible-playbook site.yml --vault-password-file ~/.vault_pass
+#   Note:    Add ~/.vault_pass to .gitignore
+###############################################################################
+
+
+###############################################################################
+# ANSIBLE CONNECTION
+# ansible_become_password references the same vault variable as ansible_password
+# so a single vault entry covers both connection auth and sudo escalation.
+###############################################################################
+ansible_python_interpreter: auto_silent
+# ansible_user: ansible
+# ansible_password: "{{ vault_ansible_password }}"
+# ansible_become: true
+# ansible_become_method: sudo
+# ansible_become_password: "{{ vault_ansible_password }}"
+
+
+###############################################################################
+# ANSIBLE USER SETUP
+###############################################################################
+# Used when creating/updating the ansible OS user password in playbooks
+ansible_user_password: "{{ vault_ansible_password }}"
+
+# SSH public key deployed to /home/ansible/.ssh/authorized_keys
+ansible_ssh_pubkey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICaBsDxJuifrMO9os+wSKySgqytPnRFfM/Mq9jkOXo85 ansible-controller"
+officepc_ssh_pubkey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE7F4lM4BYqGgrjPQ/pGe/MFPX2SHgAzIzXINIv1TbU3 paul@OfficePC"
+
+###############################################################################
+# SSH CONFIGURATION
+# Applied to sshd_config via lineinfile loop in bootstrap playbook.
+# These are permissive lab defaults for initial bootstrap.
+# Run harden.yml afterward to enforce key-only auth and remove root login.
+###############################################################################
+sshd_config_options:
+  - { key: 'PermitRootLogin',                  value: 'no' }   # harden.yml sets this to 'no'
+  - { key: 'PasswordAuthentication',           value: 'no' }   # harden.yml sets this to 'no'
+  - { key: 'PubkeyAuthentication',             value: 'yes' }
+  - { key: 'AuthorizedKeysFile',               value: '.ssh/authorized_keys' }
+  - { key: 'PermitEmptyPasswords',             value: 'no' }
+  - { key: 'ChallengeResponseAuthentication',  value: 'no' }
+  - { key: 'UsePAM',                           value: 'yes' }
+
+
+###############################################################################
+# WAZUH
+###############################################################################
+wazuh_manager_ip: "192.168.1.219"
+wazuh_manager_port: 1514
+wazuh_manager_protocol: "tcp"
+
+# Bump to trigger agent upgrade. Format: major.minor.patch-release
+# Then run: ansible-playbook new_install_baseline_roles.yml --tags wazuh
+wazuh_version: "4.14.2-1"
+
+# Defaults to inventory hostname — override per host in host_vars/ if needed
+wazuh_agent_name: "{{ inventory_hostname }}"
+
+# Uncomment when Wazuh authd enrollment password is configured:
+# wazuh_agent_authd_pass: "{{ vault_wazuh_authd_pass }}"
+
+wazuh_agent_config:
+  repo:
+    keyring_path: /etc/apt/keyrings/wazuh.gpg
+    apt_key_url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    yum_key_url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+
+###############################################################################
+# CHECKMK
+###############################################################################
+checkmk_server: "http://192.168.1.126:5000"
+checkmk_site: "cmk"
+
+# Bump after a CheckMK server upgrade, then run --tags checkmk_upgrade
+checkmk_version: "2.4.0p20-1"
+
+checkmk_deb_url: "{{ checkmk_server }}/{{ checkmk_site }}/check_mk/agents/check-mk-agent_{{ checkmk_version }}_all.deb"
+checkmk_rpm_url: "{{ checkmk_server }}/{{ checkmk_site }}/check_mk/agents/check-mk-agent-{{ checkmk_version }}.noarch.rpm"
+
+checkmk_server_url: "{{ checkmk_server }}"
+checkmk_agent_edition: "cre"  # Community Raw Edition
+checkmk_agent_force_install: false
+# Uncomment when using checkmk.general API-based registration:
+# checkmk_automation_user: "automation"
+# checkmk_automation_secret: "{{ vault_checkmk_automation_secret }}"
+
+
+###############################################################################
+# UTILITY PACKAGES
+###############################################################################
+utility_packages_common:
+  - curl
+  - nano
+  - sudo
+
+# Debian / Ubuntu / Kali / ParrotOS
+utility_packages_debian:
+  - dnsutils          # dig
+  - traceroute
+  - iputils-ping
+  - qemu-guest-agent  # ignore_errors handles LXCs that don't have this
+
+# RHEL / CentOS / Fedora
+utility_packages_redhat:
+  - bind-utils        # dig
+  - traceroute
+  - iputils           # ping
+  - qemu-guest-agent
+
+
+###############################################################################
+# INFRASTRUCTURE
+###############################################################################
+proxmox_host: "pve.home.com"
+proxmox_node: "pve"
+
+internal_networks:
+  - "192.168.1.0/24"
+  - "192.168.2.0/24"
+  - "192.168.3.0/24"
+  - "192.168.100.0/24"
+  - "192.168.200.0/24"
+  - "10.20.0.0/24"
+
+
+
+
+
+

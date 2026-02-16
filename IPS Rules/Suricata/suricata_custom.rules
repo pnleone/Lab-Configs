@@ -1,0 +1,63 @@
+#############################################
+# Custom Suricata Rules 
+# Linux + SSH + Recon + Lateral Movement + SMB Hygiene
+#############################################
+
+# ====== LINUX / SSH ======
+
+alert tcp any any -> [192.168.1.0/24,192.168.100.0/24,192.168.200.0/24] 22 \
+(msg:"LINUX: SSH Brute Force Attempt"; flow:to_server; detection_filter:track by_src, count 5, seconds 60; sid:810001; rev:1;)
+
+alert tcp 192.168.2.0/24 any -> any 22 \
+(msg:"LINUX: SSH Attempt from EXT_LAN (Unexpected)"; sid:810002; rev:1;)
+
+alert tcp any any -> any 22 \
+(msg:"LINUX: Possible sudo Abuse (SSH session with sudo keyword)"; content:"sudo"; sid:810003; rev:1;)
+
+alert tcp any any -> any 80 \
+(msg:"LINUX: curl Enumeration"; content:"User-Agent|3A| curl"; sid:810004; rev:1;)
+
+alert tcp any any -> any 80 \
+(msg:"LINUX: wget Enumeration"; content:"User-Agent|3A| Wget"; sid:810005; rev:1;)
+
+alert tcp any any -> any 80 \
+(msg:"LINUX: apt-get install over HTTP"; content:"apt-get"; sid:810006; rev:1;)
+
+
+# ====== SCANNING / RECON ======
+
+alert tcp any any -> any any \
+(msg:"RECON: Nmap OS Detection"; content:"|4E 4D 41 50|"; sid:820001; rev:1;)
+
+alert tcp any any -> any any \
+(msg:"RECON: Netcat Reverse Shell Attempt"; content:"nc -e"; sid:820002; rev:1;)
+
+alert tcp [192.168.100.0/24,192.168.200.0/24] any -> 192.168.1.0/24 any \
+(msg:"RECON: LAB → PROD Port Scan"; flags:S; threshold:type both, track by_src, count 20, seconds 10; sid:820003; rev:1;)
+
+
+# ====== LATERAL MOVEMENT ======
+
+alert ip [10.20.0.0/24,192.168.3.0/24] any -> [192.168.100.0/24,192.168.200.0/24] any \
+(msg:"LATERAL: ISO → LAB Traffic"; sid:830001; rev:1;)
+
+alert ip [192.168.100.0/24,192.168.200.0/24] any -> [10.20.0.0/24,192.168.3.0/24] any \
+(msg:"LATERAL: LAB → ISO Traffic"; sid:830002; rev:1;)
+
+
+# ====== SMB / NETBIOS ======
+
+alert tcp any any -> any 445 \
+(msg:"SMB: SMBv1 Detected"; content:"|FF 53 4D 42|"; depth:4; sid:840001; rev:1;)
+
+alert udp any any -> any 137 \
+(msg:"SMB: NetBIOS Query Flood"; threshold:type both, track by_src, count 20, seconds 10; sid:840002; rev:1;)
+
+
+# ====== EASY TEST RULES ======
+
+alert icmp any any -> 192.168.1.254 any \
+(msg:"TEST: ICMP to pfSense VIP"; sid:899001; rev:1;)
+
+alert tcp any any -> 192.168.1.254 443 \
+(msg:"TEST: HTTPS to pfSense GUI"; sid:899002; rev:1;)

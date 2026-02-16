@@ -1,0 +1,176 @@
+{
+  "name": "Lab Infrastructure Audit - Direct JSON Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 2
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "command": "source ~/ansible-venv/bin/activate && ansible-playbook /etc/ansible/ansible_lab/sys_audit_n8n.yml -i /etc/ansible/ansible_lab/inventory/hosts.ini --vault-password-file /etc/ansible/ansible_lab/secrets/vault_pass",
+        "authentication": "privateKey"
+      },
+      "id": "run-ansible-audit",
+      "name": "Run Ansible Audit",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "ansible-controller",
+          "name": "Ansible Controller SSH"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "cat /tmp/audit_report.json",
+        "authentication": "privateKey"
+      },
+      "id": "read-json-file",
+      "name": "Read JSON Report",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "ansible-controller",
+          "name": "Ansible Controller SSH"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the JSON from Ansible output\nconst rawJson = $input.item.json.stdout;\nconst auditData = JSON.parse(rawJson);\n\n// Return the parsed data\nreturn {\n  json: auditData\n};"
+      },
+      "id": "parse-json",
+      "name": "Parse JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the JSON - it's wrapped in an array\nconst auditData = $input.item.json[0];\n\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);\nconst filename = `audit_${timestamp}.html`;\n\n// Generate HTML content with the audit data\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Lab Infrastructure Audit - ${auditData.report_date}</title>\n    <style>\n        * { margin: 0; padding: 0; box-sizing: border-box; }\n        body {\n            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\n            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n            padding: 20px;\n            color: #333;\n        }\n        .container {\n            max-width: 1400px;\n            margin: 0 auto;\n            background: white;\n            border-radius: 12px;\n            box-shadow: 0 10px 40px rgba(0,0,0,0.2);\n            overflow: hidden;\n        }\n        .header {\n            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n            color: white;\n            padding: 30px;\n            text-align: center;\n        }\n        .header h1 { font-size: 2.5em; margin-bottom: 10px; }\n        .header p { font-size: 1.2em; opacity: 0.9; }\n        .stats {\n            display: grid;\n            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));\n            gap: 20px;\n            padding: 30px;\n            background: #f8f9fa;\n        }\n        .stat-card {\n            background: white;\n            padding: 20px;\n            border-radius: 8px;\n            box-shadow: 0 2px 8px rgba(0,0,0,0.1);\n            text-align: center;\n        }\n        .stat-card h3 { color: #667eea; font-size: 2em; margin-bottom: 5px; }\n        .stat-card p { color: #666; font-size: 0.9em; text-transform: uppercase; }\n        .hosts-grid {\n            display: grid;\n            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));\n            gap: 20px;\n            padding: 30px;\n        }\n        .host-card {\n            background: white;\n            border: 2px solid #e0e0e0;\n            border-radius: 8px;\n            padding: 20px;\n            transition: all 0.3s ease;\n        }\n        .host-card:hover {\n            border-color: #667eea;\n            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);\n            transform: translateY(-2px);\n        }\n        .host-header {\n            border-bottom: 2px solid #667eea;\n            padding-bottom: 10px;\n            margin-bottom: 15px;\n        }\n        .host-header h3 { color: #667eea; font-size: 1.3em; }\n        .host-header .platform {\n            display: inline-block;\n            background: #667eea;\n            color: white;\n            padding: 3px 10px;\n            border-radius: 12px;\n            font-size: 0.75em;\n            margin-top: 5px;\n        }\n        .platform.windows { background: #0078d4; }\n        .platform.linux { background: #f7931e; }\n        .platform.freebsd { background: #c32136; }\n        .host-info { margin: 10px 0; }\n        .info-row {\n            display: flex;\n            justify-content: space-between;\n            padding: 8px 0;\n            border-bottom: 1px solid #f0f0f0;\n        }\n        .info-row:last-child { border-bottom: none; }\n        .info-label {\n            font-weight: 600;\n            color: #666;\n            font-size: 0.85em;\n        }\n        .info-value {\n            color: #333;\n            font-size: 0.9em;\n            text-align: right;\n        }\n        .metric {\n            background: #f8f9fa;\n            padding: 10px;\n            border-radius: 6px;\n            margin: 10px 0;\n        }\n        .metric-bar {\n            background: #e0e0e0;\n            height: 8px;\n            border-radius: 4px;\n            overflow: hidden;\n            margin-top: 5px;\n        }\n        .metric-fill {\n            height: 100%;\n            background: linear-gradient(90deg, #667eea, #764ba2);\n            transition: width 0.5s ease;\n        }\n        .metric-fill.warning { background: linear-gradient(90deg, #f093fb, #f5576c); }\n        .metric-fill.critical { background: linear-gradient(90deg, #fa709a, #fee140); }\n        .footer {\n            background: #f8f9fa;\n            padding: 20px;\n            text-align: center;\n            color: #666;\n            font-size: 0.9em;\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>🖥️ Lab Infrastructure Audit</h1>\n            <p>Generated: ${auditData.report_date} at ${auditData.report_time}</p>\n        </div>\n        \n        <div class=\"stats\">\n            <div class=\"stat-card\">\n                <h3>${auditData.total_hosts}</h3>\n                <p>Total Hosts</p>\n            </div>\n            <div class=\"stat-card\">\n                <h3>${auditData.hosts.filter(h => h.platform === 'Linux').length}</h3>\n                <p>Linux Hosts</p>\n            </div>\n            <div class=\"stat-card\">\n                <h3>${auditData.hosts.filter(h => h.platform === 'Windows').length}</h3>\n                <p>Windows Hosts</p>\n            </div>\n            <div class=\"stat-card\">\n                <h3>${auditData.hosts.filter(h => h.platform === 'FreeBSD').length}</h3>\n                <p>FreeBSD Hosts</p>\n            </div>\n            <div class=\"stat-card\">\n                <h3>${auditData.hosts.filter(h => h.system?.disk_usage_pct > 80).length}</h3>\n                <p>High Disk Usage</p>\n            </div>\n            <div class=\"stat-card\">\n                <h3>${auditData.hosts.filter(h => h.system?.memory_usage_pct > 80).length}</h3>\n                <p>High Memory Usage</p>\n            </div>\n        </div>\n        \n        <div class=\"hosts-grid\">\n${auditData.hosts.map(host => `\n            <div class=\"host-card\">\n                <div class=\"host-header\">\n                    <h3>${host.hostname}</h3>\n                    <span class=\"platform ${host.platform.toLowerCase()}\">${host.platform}</span>\n                </div>\n                <div class=\"host-info\">\n                    <div class=\"info-row\">\n                        <span class=\"info-label\">IP Address:</span>\n                        <span class=\"info-value\">${host.ip_address}</span>\n                    </div>\n                    <div class=\"info-row\">\n                        <span class=\"info-label\">OS:</span>\n                        <span class=\"info-value\">${host.os_distribution}</span>\n                    </div>\n                    ${host.system ? `\n                    ${host.system.cpu_cores && host.system.cpu_cores !== 'N/A' ? `\n                    <div class=\"info-row\">\n                        <span class=\"info-label\">CPU Cores:</span>\n                        <span class=\"info-value\">${host.system.cpu_cores}</span>\n                    </div>\n                    ` : ''}\n                    ${host.system.memory_mb && host.system.memory_mb !== 'N/A' ? `\n                    <div class=\"info-row\">\n                        <span class=\"info-label\">Memory:</span>\n                        <span class=\"info-value\">${(host.system.memory_mb / 1024).toFixed(1)} GB</span>\n                    </div>\n                    ` : ''}\n                    ${host.system.disk_usage_pct && host.system.disk_usage_pct !== 'N/A' ? `\n                    <div class=\"metric\">\n                        <div style=\"display: flex; justify-content: space-between; margin-bottom: 5px;\">\n                            <span class=\"info-label\">Disk Usage:</span>\n                            <span class=\"info-value\">${host.system.disk_usage_pct}%</span>\n                        </div>\n                        <div class=\"metric-bar\">\n                            <div class=\"metric-fill ${host.system.disk_usage_pct > 90 ? 'critical' : host.system.disk_usage_pct > 75 ? 'warning' : ''}\" \n                                 style=\"width: ${host.system.disk_usage_pct}%\"></div>\n                        </div>\n                    </div>\n                    ` : ''}\n                    ${host.system.memory_usage_pct && host.system.memory_usage_pct !== 'N/A' ? `\n                    <div class=\"metric\">\n                        <div style=\"display: flex; justify-content: space-between; margin-bottom: 5px;\">\n                            <span class=\"info-label\">Memory Usage:</span>\n                            <span class=\"info-value\">${host.system.memory_usage_pct}%</span>\n                        </div>\n                        <div class=\"metric-bar\">\n                            <div class=\"metric-fill ${host.system.memory_usage_pct > 90 ? 'critical' : host.system.memory_usage_pct > 75 ? 'warning' : ''}\" \n                                 style=\"width: ${host.system.memory_usage_pct}%\"></div>\n                        </div>\n                    </div>\n                    ` : ''}\n                    ${host.system.uptime_since ? `\n                    <div class=\"info-row\">\n                        <span class=\"info-label\">Uptime Since:</span>\n                        <span class=\"info-value\">${host.system.uptime_since}</span>\n                    </div>\n                    ` : ''}\n                    ` : ''}\n                    ${host.network?.nameservers && host.network.nameservers !== 'N/A' && host.network.nameservers !== '' ? `\n                    <div class=\"info-row\">\n                        <span class=\"info-label\">DNS:</span>\n                        <span class=\"info-value\">${host.network.nameservers.split(',')[0]}</span>\n                    </div>\n                    ` : ''}\n                    ${host.security?.ssh_keys_count ? `\n                    <div class=\"info-row\">\n                        <span class=\"info-label\">SSH Keys:</span>\n                        <span class=\"info-value\">${host.security.ssh_keys_count}</span>\n                    </div>\n                    ` : ''}\n                    ${host.security?.defender_enabled ? `\n                    <div class=\"info-row\">\n                        <span class=\"info-label\">Windows Defender:</span>\n                        <span class=\"info-value\">${host.security.defender_enabled}</span>\n                    </div>\n                    ` : ''}\n                    ${host.software?.updates_available && host.software.updates_available !== 'N/A' && host.software.updates_available !== '0' && !host.software.updates_available.includes('\\n') ? `\n                    <div class=\"info-row\">\n                        <span class=\"info-label\">Updates Available:</span>\n                        <span class=\"info-value\" style=\"color: #f5576c; font-weight: bold;\">${host.software.updates_available}</span>\n                    </div>\n                    ` : ''}\n                </div>\n            </div>\n`).join('')}\n        </div>\n        \n        <div class=\"footer\">\n            <p>Automated Infrastructure Audit System | Generated by Ansible + n8n</p>\n            <p>Report Generated: ${auditData.report_generated}</p>\n        </div>\n    </div>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    filename: filename,\n    html_content: html,\n    timestamp: timestamp,\n    total_hosts: auditData.total_hosts,\n    report_date: auditData.report_date,\n    report_generated: auditData.report_generated\n  }\n}];"
+      },
+      "id": "generate-html",
+      "name": "Generate HTML Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "command": "={{ 'echo \"' + $json.html_content.replace(/\"/g, '\\\\\\\\\"').replace(/\\$/g, '\\\\$') + '\" > /var/www/html/audits/' + $json.filename }}",
+        "authentication": "privateKey"
+      },
+      "id": "write-html-file",
+      "name": "Write HTML to Webserver",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "webserver",
+          "name": "Webserver SSH"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Update the index.html with new audit entry\nconst filename = $input.item.json.filename;\nconst report_date = $input.item.json.report_date;\nconst total_hosts = $input.item.json.total_hosts;\nconst report_generated = $input.item.json.report_generated;\n\n// Create the table row HTML\nconst tableRow = `<tr><td><a href=\"${filename}\">${report_date}</a></td><td>${report_generated}</td><td>${total_hosts}</td></tr>`;\n\n// Command to add to index\nconst updateCmd = `cd /var/www/html/audits && sed -i '/<tbody>/a ${tableRow.replace(/'/g, \"'\\\\\\\\''\")}' index.html`;\n\nreturn [{\n  json: {\n    command: updateCmd,\n    filename: filename,\n    report_date: report_date\n  }\n}];"
+      },
+      "id": "update-index",
+      "name": "Update Index",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}",
+        "authentication": "privateKey"
+      },
+      "id": "execute-index-update",
+      "name": "Execute Index Update",
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [1650, 300],
+      "credentials": {
+        "sshPrivateKey": {
+          "id": "webserver",
+          "name": "Webserver SSH"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "=**Lab Infrastructure Audit Complete** ✅\\n\\n📊 **Report Date:** {{ $('Generate HTML Report').item.json.report_date }}\\n🖥️ **Total Hosts:** {{ $('Generate HTML Report').item.json.total_hosts }}\\n🔗 **View Report:** https://web.home.com/audits/{{ $('Generate HTML Report').item.json.filename }}\\n\\n_Automated audit completed successfully at {{ $now.format('HH:mm:ss') }}_"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-discord-notification",
+      "name": "Send Discord Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1850, 300]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Run Ansible Audit", "type": "main", "index": 0 }]]
+    },
+    "Run Ansible Audit": {
+      "main": [[{ "node": "Read JSON Report", "type": "main", "index": 0 }]]
+    },
+    "Read JSON Report": {
+      "main": [[{ "node": "Parse JSON", "type": "main", "index": 0 }]]
+    },
+    "Parse JSON": {
+      "main": [[{ "node": "Generate HTML Report", "type": "main", "index": 0 }]]
+    },
+    "Generate HTML Report": {
+      "main": [[{ "node": "Write HTML to Webserver", "type": "main", "index": 0 }]]
+    },
+    "Write HTML to Webserver": {
+      "main": [[{ "node": "Update Index", "type": "main", "index": 0 }]]
+    },
+    "Update Index": {
+      "main": [[{ "node": "Execute Index Update", "type": "main", "index": 0 }]]
+    },
+    "Execute Index Update": {
+      "main": [[{ "node": "Send Discord Notification", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "id": "lab-audit-workflow-v2",
+  "meta": {
+    "instanceId": "n8n-lab-instance"
+  },
+  "tags": []
+}

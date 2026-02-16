@@ -1,0 +1,262 @@
+---
+###############################################################################
+# freebsd_hardening.yml
+# Purpose: FreeBSD hardening baseline (pfSense/OPNsense compatible)
+#
+# What this does:
+#   - Hardens SSH configuration
+#   - Configures sysctl security parameters
+#   - Sets up basic packet filtering rules
+#   - Enables security logging
+#   - Disables unnecessary services
+#   - Configures NTP
+#
+# Run: ansible-playbook freebsd_hardening.yml -i inventory/hosts.ini --ask-vault-pass
+###############################################################################
+
+- name: FreeBSD hardening baseline
+  hosts: freebsd
+  gather_facts: true
+  become: true
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: sshd
+        state: restarted
+
+    - name: reload sysctl
+      command: sysctl -f /etc/sysctl.conf
+
+  tasks:
+
+    ##########################################################################
+    # SSH HARDENING
+    ##########################################################################
+
+    - name: Check if sshd_config exists
+      stat:
+        path: /etc/ssh/sshd_config
+      register: sshd_config_check
+      tags: ssh
+
+    - name: Harden SSH configuration
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+        create: no
+        backup: yes
+      loop:
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+        - { regexp: '^#?PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
+        - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
+        - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 3' }
+        - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
+        - { regexp: '^#?ClientAliveCountMax', line: 'ClientAliveCountMax 2' }
+        - { regexp: '^#?Protocol', line: 'Protocol 2' }
+      notify: restart sshd
+      when: sshd_config_check.stat.exists
+      tags: ssh
+
+    - name: Set SSH allowed users
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?AllowUsers'
+        line: 'AllowUsers ansible paul'
+        state: present
+        create: no
+      notify: restart sshd
+      when: sshd_config_check.stat.exists
+      tags: ssh
+
+    - name: Display warning if SSH config not found
+      debug:
+        msg: "WARNING: /etc/ssh/sshd_config not found on {{ inventory_hostname }}. This may be OPNsense/pfSense - SSH hardening skipped. Use web GUI for SSH settings."
+      when: not sshd_config_check.stat.exists
+      tags: ssh
+
+    ##########################################################################
+    # SYSCTL SECURITY HARDENING
+    ##########################################################################
+
+    - name: Configure security sysctl parameters
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+        sysctl_file: /etc/sysctl.conf
+      loop:
+        # Network security
+        - { key: 'net.inet.ip.forwarding', value: '0' }
+        - { key: 'net.inet.ip.redirect', value: '0' }
+        - { key: 'net.inet.icmp.drop_redirect', value: '1' }
+        - { key: 'net.inet.tcp.blackhole', value: '2' }
+        - { key: 'net.inet.udp.blackhole', value: '1' }
+        - { key: 'net.inet.icmp.bmcastecho', value: '0' }
+        - { key: 'net.inet.tcp.syncookies', value: '1' }
+        # Kernel security
+        - { key: 'kern.randompid', value: '1' }
+        - { key: 'security.bsd.see_other_uids', value: '0' }
+        - { key: 'security.bsd.see_other_gids', value: '0' }
+        - { key: 'security.bsd.unprivileged_read_msgbuf', value: '0' }
+        - { key: 'security.bsd.unprivileged_proc_debug', value: '0' }
+      tags: sysctl
+      when: ansible_os_family == "FreeBSD"
+
+    ##########################################################################
+    # DISABLE UNNECESSARY SERVICES
+    ##########################################################################
+
+    - name: Disable sendmail
+      service:
+        name: sendmail
+        enabled: no
+        state: stopped
+      tags: services
+      ignore_errors: true
+
+    - name: Disable inetd
+      service:
+        name: inetd
+        enabled: no
+        state: stopped
+      tags: services
+      ignore_errors: true
+
+    ##########################################################################
+    # LOGGING CONFIGURATION
+    ##########################################################################
+
+    - name: Enable security logging in syslog
+      lineinfile:
+        path: /etc/syslog.conf
+        line: "{{ item }}"
+        state: present
+      loop:
+        - "auth.info;authpriv.info                       /var/log/auth.log"
+        - "security.*                                     /var/log/security"
+      tags: logging
+
+    - name: Create security log file
+      file:
+        path: /var/log/security
+        state: touch
+        mode: '0600'
+        owner: root
+        group: wheel
+      tags: logging
+
+    - name: Restart syslogd
+      service:
+        name: syslogd
+        state: restarted
+      tags: logging
+
+    ##########################################################################
+    # NTP CONFIGURATION
+    ##########################################################################
+
+    - name: Configure NTP servers in rc.conf
+      lineinfile:
+        path: /etc/rc.conf
+        regexp: '^ntpd_enable='
+        line: 'ntpd_enable="YES"'
+        state: present
+      tags: ntp
+
+    - name: Configure NTP sync on boot
+      lineinfile:
+        path: /etc/rc.conf
+        regexp: '^ntpd_sync_on_start='
+        line: 'ntpd_sync_on_start="YES"'
+        state: present
+      tags: ntp
+
+    - name: Start NTP service
+      service:
+        name: ntpd
+        enabled: yes
+        state: started
+      tags: ntp
+
+    ##########################################################################
+    # PASSWORD POLICY
+    ##########################################################################
+
+    - name: Set password quality requirements in login.conf
+      blockinfile:
+        path: /etc/login.conf
+        block: |
+          default:\
+              :passwd_format=blf:\
+              :minpasswordlen=12:\
+              :mixpasswordcase=true:
+        marker: "# {mark} ANSIBLE MANAGED PASSWORD POLICY"
+      tags: passwords
+
+    - name: Rebuild login.conf database
+      command: cap_mkdb /etc/login.conf
+      tags: passwords
+
+    ##########################################################################
+    # FILE PERMISSIONS
+    ##########################################################################
+
+    - name: Set secure permissions on cron directories
+      file:
+        path: "{{ item }}"
+        mode: '0700'
+        owner: root
+        group: wheel
+      loop:
+        - /etc/crontab
+        - /var/cron/tabs
+      tags: permissions
+      ignore_errors: true
+
+    - name: Set secure permissions on system files
+      file:
+        path: "{{ item }}"
+        mode: '0600'
+        owner: root
+        group: wheel
+      loop:
+        - /etc/ssh/sshd_config
+        - /etc/rc.conf
+      tags: permissions
+
+    ##########################################################################
+    # KERNEL MODULES
+    ##########################################################################
+
+    - name: Blacklist unnecessary kernel modules
+      lineinfile:
+        path: /boot/loader.conf
+        line: "{{ item }}"
+        state: present
+      loop:
+        - 'accf_http_load="NO"'
+        - 'accf_data_load="NO"'
+      tags: kernel
+      ignore_errors: true
+
+    ##########################################################################
+    # FIREWALL REMINDER (pfSense/OPNsense specific)
+    ##########################################################################
+
+    - name: Display firewall configuration note
+      debug:
+        msg: |
+          NOTE: For pfSense/OPNsense firewall rules, use the web GUI.
+          This playbook handles OS-level hardening only.
+          Recommended firewall actions:
+          - Block RFC1918 on WAN
+          - Enable bogon filtering
+          - Configure state table limits
+          - Enable scrubbing
+      tags: always

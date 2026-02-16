@@ -1,0 +1,83 @@
+---
+- name: Audit system info
+  hosts: linux
+  gather_facts: no
+  become: true
+
+  vars:
+    # Path to the single consolidated report
+    master_log: "./master_audit_report.log"
+
+  pre_tasks:
+    - name: Initialize empty master log file
+      ansible.builtin.copy:
+        content: "CONSOLIDATED SYSTEM AUDIT - {{ now(fmt='%Y-%m-%d %H:%M:%S') }}\n\n"
+        dest: "{{ master_log }}"
+        force: yes # Start fresh each run; change to 'no' to append instead
+      delegate_to: localhost
+      run_once: true
+      become: false
+
+    - name: Check if host is awake
+      ansible.builtin.wait_for_connection:
+        timeout: 3
+      ignore_unreachable: yes
+      ignore_errors: yes
+      register: connection_check
+
+    - name: Gather facts only for reachable hosts
+      ansible.builtin.setup:
+      when: connection_check is success
+
+  tasks:
+    - name: Skip unreachable hosts
+      ansible.builtin.meta: end_host
+      when: connection_check is failed or connection_check is unreachable
+
+    # --- Data Collection ---
+    - name: Audit - Storage Space
+      ansible.builtin.shell: df -h
+      register: disk_usage
+      changed_when: false
+
+    - name: Audit - Routing Table
+      ansible.builtin.shell: ip r
+      register: route_info
+      changed_when: false
+
+    - name: Audit - Nameservers
+      ansible.builtin.shell: grep '^nameserver' /etc/resolv.conf
+      register: resolv_conf
+      changed_when: false
+
+    - name: Audit - Authorized SSH Keys
+      ansible.builtin.slurp:
+        src: "/home/ansible/.ssh/authorized_keys"
+      register: ssh_keys
+      ignore_errors: true
+
+    # --- Logging to Master File ---
+    - name: Append data to master report
+      ansible.builtin.blockinfile:
+        path: "{{ master_log }}"
+        marker: "# --- {mark} AUDIT FOR {{ inventory_hostname }} ---"
+        block: |
+          HOSTNAME: {{ ansible_hostname }}
+          DISTRO:   {{ ansible_distribution }} {{ ansible_distribution_version }}
+          IP:       {{ ansible_default_ipv4.address | default('N/A') }}
+          
+          [DISK USAGE]
+          {{ disk_usage.stdout }}
+          
+          [ROUTING TABLE]
+          {{ route_info.stdout }}
+          
+          [NAMESERVERS]
+          {{ resolv_conf.stdout }}
+          
+          [SSH KEYS]
+          {{ (ssh_keys.content | b64decode).strip() if 'content' in ssh_keys else 'File not found' }}
+
+        insertafter: EOF
+      delegate_to: localhost
+      become: false

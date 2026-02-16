@@ -1,9 +1,36 @@
-options {
-    directory "/etc/bind";
-    recursion no;
-    allow-query { 192.168.1.250; }; # Allow only Pi-hole to query it
-    listen-on { 192.168.1.251; 127.0.0.1; }; # Listen only on its own IP
-    forwarders {
-    192.168.1.250; # Forward external queries to Pi-hole
+acl "internal_networks" {
+    127.0.0.1;
+    192.168.1.0/24;
+    192.168.2.0/24;
+    192.168.3.0/24;
+    192.168.100.0/24;
+    192.168.200.0/24;
 };
+
+options {
+    directory "/var/cache/bind";
+
+   
+    recursion yes;
+    allow-query { "internal_networks"; };
+    allow-recursion { "internal_networks"; };
+
+    listen-on { any; };
+
+    forwarders {
+        192.168.1.252 port 5335;
+    };
+    forward only;
+
+    
+    // Stop local reverse lookups (PTR) for private IPs from leaking to Unbound
+    empty-zones-enable yes;
+
+    // DNS Rebinding protection: Prevents external domains from resolving
+    // to internal IP addresses.
+    deny-answer-addresses { 192.168.0.0/16; };
+
+    dnssec-validation auto;
+    
+    version "none";
 };

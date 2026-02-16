@@ -1,0 +1,10 @@
+ansible_become_method: runas
+ansible_become_user: lab\superpaul
+ansible_connection: winrm
+ansible_winrm_scheme: http
+ansible_winrm_server_cert_validation: ignore
+ansible_winrm_transport: ntlm  # Use 'ntlm' for local accounts
+ansible_port: 5985                # HTTPS is standard for WinRM
+ansible_windows_password: "{{ vault_windows_ansible }}"
+ansible_become_password: "{{ vault_windows_superpaul }}"
+

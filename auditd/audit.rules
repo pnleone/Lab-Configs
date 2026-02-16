@@ -31,6 +31,7 @@
 # Remove any existing rules
 -D
 
+
 # Buffer Size
 ## Feel free to increase this if the machine panic's
 -b 8192
@@ -628,119 +629,30 @@
 -w /etc/pacman.conf -p x -k third_party_software_mgmt
 -w /etc/pacman.d -p x -k third_party_software_mgmt
    
-# Special Software ------------------------------------------------------------
-
-## GDS specific secrets
--w /etc/puppet/ssl -p wa -k puppet_ssl
-
-## IBM Bigfix BESClient
--a always,exit -F arch=b64 -S open -F dir=/opt/BESClient -F success=0 -k soft_besclient
--w /var/opt/BESClient/ -p wa -k soft_besclient
-
-## CHEF https://www.chef.io/chef/
--w /etc/chef -p wa -k soft_chef
-
-## Salt
-## https://saltproject.io/
-## https://docs.saltproject.io/en/latest/ref/configuration/master.html
--w /etc/salt -p wa -k soft_salt
--w /usr/local/etc/salt -p wa -k soft_salt
-
-## Otter
-## https://inedo.com/otter
--w /etc/otter -p wa -k soft_otter
-
-## T1081 Credentials In Files
--w /usr/bin/grep -p x -k string_search
--w /usr/bin/egrep -p x -k string_search
--w /usr/bin/ugrep -p x -k string_search
-
-### https://github.com/tmbinc/bgrep
--w /usr/bin/bgrep -p x -k string_search
-
-### https://github.com/BurntSushi/ripgrep
--w /usr/bin/rg -p x -k string_search
-
-### https://github.com/awgn/cgrep
-
--w /usr/bin/cgrep -p x -k string_search
-
-### https://github.com/jpr5/ngrep
--w /usr/bin/ngrep -p x -k string_search
-
-### https://github.com/vrothberg/vgrep
--w /usr/bin/vgrep -p x -k string_search
-
-### https://github.com/monochromegane/the_platinum_searcher
--w /usr/bin/pt -p x -k string_search
-
-### https://github.com/gvansickle/ucg
--w /usr/bin/ucg -p x -k string_search
-
-### https://github.com/ggreer/the_silver_searcher
--w /usr/bin/ag -p x -k string_search
-
-### https://github.com/beyondgrep/ack3
-### https://beyondgrep.com
--w /usr/bin/ack -p x -k string_search
--w /usr/local/bin/ack -p x -k string_search
--w /usr/bin/semgrep -p x -k string_search
-
-# CrowdStrike Falcon
-# Identify CrowdStrike Falcon Sensor updates
--a always,exit -F arch=b32 -F path=/etc/crowdstrike/falcon-sensor.conf -p wa -F key=falcon_sensor_update
--a always,exit -F arch=b64 -F path=/etc/crowdstrike/falcon-sensor.conf -p wa -F key=falcon_sensor_update
-
--a always,exit -F arch=b32 -F path=/usr/lib/crowdstrike/falcon-sensor.conf -p wa -F key=falcon_sensor_update
--a always,exit -F arch=b64 -F path=/usr/lib/crowdstrike/falcon-sensor.conf -p wa -F key=falcon_sensor_update
-
-# Identify CrowdStrike Falcon Sensor
--a always,exit -F arch=b32 -F dir=/etc/crowdstrike/ -p wa -F key=falcon_sensor
--a always,exit -F arch=b64 -F dir=/etc/crowdstrike/ -p wa -F key=falcon_sensor
-
--a always,exit -F arch=b32 -F dir=/usr/lib/crowdstrike/ -p wa -F key=falcon_sensor
--a always,exit -F arch=b64 -F dir=/usr/lib/crowdstrike/ -p wa -F key=falcon_sensor
-
--a always,exit -F arch=b32 -F dir=/opt/CrowdStrike/ -p wa -F key=falcon_sensor
--a always,exit -F arch=b64 -F dir=/opt/CrowdStrike/ -p wa -F key=falcon_sensor
-
--a always,exit -F arch=b32 -F dir=/var/log/crowdstrike/ -p wa -F key=falcon_sensor
--a always,exit -F arch=b64 -F dir=/var/log/crowdstrike/ -p wa -F key=falcon_sensor
-
-# Identify CrowdStrike Falcon Agent activity
--a always,exit -F arch=b32 -F path=/usr/bin/falcon-scout -p x -F key=falcon_agent
--a always,exit -F arch=b64 -F path=/usr/bin/falcon-scout -p x -F key=falcon_agent
-
--a always,exit -F arch=b32 -F path=/usr/bin/falcon-agent -p x -F key=falcon_agent
--a always,exit -F arch=b64 -F path=/usr/bin/falcon-agent -p x -F key=falcon_agent
-
-# Identify CrowdStrike Falcon Sensor network
--a always,exit -F arch=b32 -S connect -F dir=+ -F obj=/opt/CrowdStrike/falcon-sensor -F key=crowdstrike_network
--a always,exit -F arch=b64 -S connect -F dir=+ -F obj=/opt/CrowdStrike/falcon-sensor -F key=crowdstrike_network
 
 ## Docker
--w /usr/bin/dockerd -k docker
--w /usr/bin/docker -k docker
--w /usr/bin/docker-containerd -k docker
--w /usr/bin/docker-runc -k docker
--w /var/lib/docker -p wa -k docker
--w /etc/docker -k docker
--w /etc/sysconfig/docker -k docker
--w /etc/sysconfig/docker-storage -k docker
--w /usr/lib/systemd/system/docker.service -k docker
--w /usr/lib/systemd/system/docker.socket -k docker
+##-w /usr/bin/dockerd -k docker
+##-w /usr/bin/docker -k docker
+##-w /usr/bin/docker-containerd -k docker
+##-w /usr/bin/docker-runc -k docker
+##-w /var/lib/docker -p wa -k docker
+##-w /etc/docker -k docker
+##-w /etc/sysconfig/docker -k docker
+##-w /etc/sysconfig/docker-storage -k docker
+##-w /usr/lib/systemd/system/docker.service -k docker
+##-w /usr/lib/systemd/system/docker.socket -k docker
 
 ## Virtualization stuff
--w /usr/bin/qemu-system-x86_64 -p x -k qemu-system-x86_64
--w /usr/bin/qemu-img -p x -k qemu-img
--w /usr/bin/qemu-kvm -p x -k qemu-kvm
--w /usr/bin/qemu -p x -k qemu
--w /usr/bin/virtualbox -p x -k virtualbox
--w /usr/bin/virt-manager -p x -k virt-manager
--w /usr/bin/VBoxManage -p x -k VBoxManage
+##-w /usr/bin/qemu-system-x86_64 -p x -k qemu-system-x86_64
+##-w /usr/bin/qemu-img -p x -k qemu-img
+##-w /usr/bin/qemu-kvm -p x -k qemu-kvm
+##-w /usr/bin/qemu -p x -k qemu
+##-w /usr/bin/virtualbox -p x -k virtualbox
+##-w /usr/bin/virt-manager -p x -k virt-manager
+##-w /usr/bin/VBoxManage -p x -k VBoxManage
 
 ## Kubelet
--w /usr/bin/kubelet -k kubelet
+##-w /usr/bin/kubelet -k kubelet
 
 # ipc system call
 # /usr/include/linux/ipc.h
@@ -750,8 +662,8 @@
 ## msgget
 #-a always,exit -S ipc -F a0=13 -k Inter-Process_Communication
 ## Use these lines on x86_64, ia64 instead
--a always,exit -F arch=b64 -S msgctl -k Inter-Process_Communication
--a always,exit -F arch=b64 -S msgget -k Inter-Process_Communication
+##-a always,exit -F arch=b64 -S msgctl -k Inter-Process_Communication
+##-a always,exit -F arch=b64 -S msgget -k Inter-Process_Communication
 
 ## semctl
 #-a always,exit -S ipc -F a0=3 -k Inter-Process_Communication
@@ -762,10 +674,10 @@
 ## semtimedop
 #-a always,exit -S ipc -F a0=4 -k Inter-Process_Communication
 ## Use these lines on x86_64, ia64 instead
--a always,exit -F arch=b64 -S semctl -k Inter-Process_Communication
--a always,exit -F arch=b64 -S semget -k Inter-Process_Communication
--a always,exit -F arch=b64 -S semop -k Inter-Process_Communication
--a always,exit -F arch=b64 -S semtimedop -k Inter-Process_Communication
+##-a always,exit -F arch=b64 -S semctl -k Inter-Process_Communication
+##-a always,exit -F arch=b64 -S semget -k Inter-Process_Communication
+##-a always,exit -F arch=b64 -S semop -k Inter-Process_Communication
+##-a always,exit -F arch=b64 -S semtimedop -k Inter-Process_Communication
 
 ## shmctl
 #-a always,exit -S ipc -F a0=24 -k Inter-Process_Communication
@@ -780,12 +692,12 @@
 ## Disable these rules if they create too many events in your environment
 
 ## Common Shells
--w /bin/bash -p x -k susp_shell
--w /bin/dash -p x -k susp_shell
--w /bin/busybox -p x -k susp_shell
--w /bin/zsh -p x -k susp_shell
--w /bin/sh -p x -k susp_shell
--w /bin/ksh -p x -k susp_shell
+##-w /bin/bash -p x -k susp_shell
+##-w /bin/dash -p x -k susp_shell
+##-w /bin/busybox -p x -k susp_shell
+##-w /bin/zsh -p x -k susp_shell
+##-w /bin/sh -p x -k susp_shell
+##-w /bin/ksh -p x -k susp_shell
 
 ## Root command executions
 -a always,exit -F arch=b64 -F euid=0 -F auid>=1000 -F auid!=-1 -S execve -k rootcmd
@@ -816,4 +728,4 @@
 
 # Make The Configuration Immutable --------------------------------------------
 
-##-e 2
+##-e 1

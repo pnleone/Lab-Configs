@@ -1,0 +1,76 @@
+
+# Linux + SSH + Recon + Lateral Movement + SMB Hygiene
+#############################################
+
+# ====== LINUX / SSH / PRIVILEGE ESCALATION ======
+
+# 1. SSH brute-force attempts (5 failures in 60 seconds)
+alert tcp any any -> [192.168.1.0/24,192.168.100.0/24,192.168.200.0/24] 22 \
+(msg:"LINUX: SSH Brute Force Attempt"; flow:to_server; detection_filter:track by_src, count 5, seconds 60; sid:710001; rev:1;)
+
+# 2. SSH from EXT_LAN (should never happen)
+alert tcp 192.168.2.0/24 any -> any 22 \
+(msg:"LINUX: SSH Attempt from EXT_LAN (Unexpected)"; sid:710002; rev:1;)
+
+# 3. sudo abuse attempt (network-level detection via sudoers file access)
+alert tcp any any -> any 22 \
+(msg:"LINUX: Possible sudo Abuse (SSH session with sudo keyword)"; content:"sudo"; sid:710003; rev:1;)
+
+# 4. Suspicious curl/wget enumeration
+alert tcp any any -> any 80 \
+(msg:"LINUX: curl/wget Enumeration"; content:"User-Agent|3A| curl"; sid:710004; rev:1;)
+
+alert tcp any any -> any 80 \
+(msg:"LINUX: curl/wget Enumeration"; content:"User-Agent|3A| Wget"; sid:710005; rev:1;)
+
+# 5. Package manager misuse (apt-get install over HTTP)
+alert tcp any any -> any 80 \
+(msg:"LINUX: apt-get install over HTTP (Insecure)"; content:"apt-get"; sid:710006; rev:1;)
+
+
+# ====== SCANNING / RECON ======
+
+# 6. Nmap OS detection scan
+alert tcp any any -> any any \
+(msg:"RECON: Nmap OS Detection"; content:"|4E 4D 41 50|"; sid:720001; rev:1;)
+
+# 7. Netcat reverse shell attempt
+alert tcp any any -> any any \
+(msg:"RECON: Netcat Reverse Shell Attempt"; content:"nc -e"; sid:720002; rev:1;)
+
+# 8. LAB → PROD port scanning
+alert tcp [192.168.100.0/24,192.168.200.0/24] any -> 192.168.1.0/24 any \
+(msg:"RECON: LAB → PROD Port Scan"; flags:S; threshold:type both, track by_src, count 20, seconds 10; sid:720003; rev:1;)
+
+
+# ====== LATERAL MOVEMENT / POLICY VIOLATIONS ======
+
+# 9. ISO → LAB unauthorized traffic
+alert ip [10.20.0.0/24,192.168.3.0/24] any -> [192.168.100.0/24,192.168.200.0/24] any \
+(msg:"LATERAL: ISO → LAB Traffic (Policy Violation)"; sid:730001; rev:1;)
+
+# 10. LAB → ISO unauthorized traffic
+alert ip [192.168.100.0/24,192.168.200.0/24] any -> [10.20.0.0/24,192.168.3.0/24] any \
+(msg:"LATERAL: LAB → ISO Traffic (Policy Violation)"; sid:730002; rev:1;)
+
+
+# ====== SMB / NETBIOS HYGIENE ======
+
+# 11. SMBv1 detection
+alert tcp any any -> any 445 \
+(msg:"SMB: SMBv1 Detected"; content:"|FF 53 4D 42|"; depth:4; sid:740001; rev:1;)
+
+# 12. NetBIOS name query flood
+alert udp any any -> any 137 \
+(msg:"SMB: NetBIOS Query Flood"; threshold:type both, track by_src, count 20, seconds 10; sid:740002; rev:1;)
+
+
+# ====== EASY TEST RULES ======
+
+# 13. Ping to pfSense VIP
+alert icmp any any -> 192.168.1.254 any \
+(msg:"TEST: ICMP to pfSense VIP"; sid:799001; rev:1;)
+
+# 14. HTTP request to pfSense GUI
+alert tcp any any -> 192.168.1.254 443 \
+(msg:"TEST: HTTPS to pfSense GUI"; sid:799002; rev:1;)

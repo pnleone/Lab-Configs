@@ -1,5 +1,5 @@
 ---
--  name: Freah install of Linux VM/LXC, add ansible user and SSH access
+-  name: Fresh install of Linux VM/LXC, add ansible user and SSH access
    hosts: all
    tags: always
    become: true
@@ -123,54 +123,26 @@
         mode: '0440'
         validate: '/usr/sbin/visudo -cf %s'
       
-    - name: Replace /etc/resolv.conf with specified nameservers
-      copy:
-        dest: /etc/resolv.conf
-        content: |
-          nameserver 192.168.1.250
-          nameserver 192.168.1.126
-        owner: root
-        group: root
-        mode: '0644'
-        backup: yes
-      notify: Restart systemd-resolved (if needed)
+  # Debian reboot check
+- name: Check if reboot is required (Debian/Ubuntu)
+  stat:
+    path: /var/run/reboot-required
+  register: reboot_required
+  when: ansible_os_family == "Debian"
 
-  
--  name: add a new user and enable remote access via SSH
-   hosts: all
-   become: true
+# RedHat reboot check
+- name: Check if reboot is required (RedHat family)
+  command: needs-restarting -r
+  register: needs_reboot
+  failed_when: false
+  changed_when: false
+  when: ansible_os_family == "RedHat"
 
-   handlers:
-    - name: Restart systemd-resolved (if needed)
-      ansible.builtin.systemd:
-        name: systemd-resolved
-        state: restarted
-        enabled: yes
-      when:
-        - ansible_service_mgr == "systemd"
-        - "'systemd-resolved.service' in ansible_facts.services | default({})"
+- name: Reboot if required (Debian)
+  reboot:
+  when: reboot_required.stat.exists
 
-
-    # Debian reboot check
-    - name: Check if reboot is required (Debian/Ubuntu)
-      stat:
-        path: /var/run/reboot-required
-      register: reboot_required
-      when: ansible_os_family == "Debian"
-
-    # RedHat reboot check
-    - name: Check if reboot is required (RedHat family)
-      command: needs-restarting -r
-      register: needs_reboot
-      failed_when: false
-      changed_when: false
-      when: ansible_os_family == "RedHat"
-
-    - name: Reboot if required (Debian)
-      reboot:
-      when: reboot_required.stat.exists
-
-    - name: Reboot if required (RedHat)
-      reboot:
-      when: needs_reboot.rc == 1
+- name: Reboot if required (RedHat)
+  reboot:
+  when: needs_reboot.rc == 1
    

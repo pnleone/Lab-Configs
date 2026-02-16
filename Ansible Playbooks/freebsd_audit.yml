@@ -1,0 +1,115 @@
+---
+###############################################################################
+# freebsd_audit.yml
+# Purpose: Gather facts and audit details from FreeBSD hosts (pfSense/OPNsense)
+#
+# Output: JSON file with system info, network interfaces, firewall rules, services
+#
+# Run examples:
+#   ansible-playbook freebsd_audit.yml -i inventory/hosts.ini --ask-vault-pass
+#   ansible-playbook freebsd_audit.yml -i inventory/hosts.ini -e output_file=/tmp/freebsd_audit.json
+###############################################################################
+
+- name: FreeBSD system audit
+  hosts: freebsd
+  become: yes
+
+  vars:
+    output_file: "{{ output_file | default('/etc/ansible/ansible_lab/freebsd_audit.json') }}"
+
+  tasks:
+    - name: Check if host is reachable
+      wait_for_connection:
+        timeout: 10
+      ignore_errors: yes
+      register: reachability
+
+    - name: Skip unreachable host
+      meta: end_host
+      when: reachability is failed
+
+    - name: Get FreeBSD version
+      command: freebsd-version
+      register: freebsd_version
+      changed_when: false
+
+    - name: Get uptime
+      command: uptime
+      register: uptime
+      changed_when: false
+
+    - name: Get disk usage
+      command: df -h
+      register: disk_usage
+      changed_when: false
+
+    - name: Get memory info
+      command: vmstat -h
+      register: memory_info
+      changed_when: false
+
+    - name: Get CPU info
+      command: sysctl hw.model hw.ncpu
+      register: cpu_info
+      changed_when: false
+
+    - name: Get network interfaces
+      command: ifconfig
+      register: network_interfaces
+      changed_when: false
+
+    - name: Get routing table
+      command: netstat -rn
+      register: routing_table
+      changed_when: false
+
+    - name: Get users
+      command: who
+      register: users
+      changed_when: false
+
+    - name: Get installed packages
+      command: pkg info
+      register: packages
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Build audit data structure
+      set_fact:
+        host_audit:
+          hostname: "{{ ansible_hostname }}"
+          ip_address: "{{ ansible_default_ipv4.address | default(ansible_host) }}"
+          os_version: "{{ freebsd_version.stdout }}"
+          uptime: "{{ uptime.stdout }}"
+          disk_usage: "{{ disk_usage.stdout_lines }}"
+          memory: "{{ memory_info.stdout_lines }}"
+          cpu: "{{ cpu_info.stdout_lines }}"
+          network_interfaces: "{{ network_interfaces.stdout_lines }}"
+          routing_table: "{{ routing_table.stdout_lines }}"
+          users: "{{ users.stdout_lines }}"
+          packages_count: "{{ packages.stdout_lines | length }}"
+          audit_timestamp: "{{ ansible_date_time.iso8601 }}"
+
+- name: Generate consolidated report
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Collect audit data from all hosts
+      set_fact:
+        all_host_audits: "{{ groups['freebsd'] | map('extract', hostvars, 'host_audit') | select('defined') | list }}"
+
+    - name: Write consolidated JSON report
+      copy:
+        content: |
+          {
+            "report_generated": "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}",
+            "total_hosts": {{ all_host_audits | length }},
+            "platform": "FreeBSD",
+            "hosts": {{ all_host_audits | to_nice_json }}
+          }
+        dest: "{{ output_file }}"
+
+    - name: Display report location
+      debug:
+        msg: "FreeBSD audit report written to {{ output_file }}"

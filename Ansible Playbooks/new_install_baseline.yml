@@ -1,0 +1,371 @@
+---
+###############################################################################
+# new_install_v2.yml
+# Purpose: Fresh install baseline for Linux VMs and LXCs
+# Supports: Debian, Ubuntu, Kali, ParrotOS, RHEL, CentOS, Fedora
+# Run: ansible-playbook new_install_v2.yml -i inventory.env
+#      ansible-playbook new_install_v2.yml -i inventory.env --tags wazuh
+###############################################################################
+
+- name: Fresh install baseline - all hosts
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    ansible_ssh_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM6pV5iqOKDFRfFzNQ+OSXIPYJ1wmsywJhJOJ/wcxZQ1 root@ansible"
+    wazuh_manager_ip: "192.168.1.219"
+    wazuh_version: "4.14.2-1"
+    checkmk_server: "http://192.168.1.126:5000"
+    checkmk_version: "2.4.0p20-1"
+
+    # Utility packages - distro-agnostic names where possible
+    utility_packages_common:
+      - curl
+      - nano
+      - sudo
+
+    # Packages with different names per family
+    utility_packages_debian:
+      - dnsutils          # provides dig
+      - traceroute
+      - iputils-ping
+      - qemu-guest-agent
+
+    utility_packages_redhat:
+      - bind-utils        # provides dig
+      - traceroute
+      - iputils
+      - qemu-guest-agent
+
+  ###############################################################
+  # HANDLERS
+  ###############################################################
+  handlers:
+    - name: restart sshd
+      service:
+        name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+        state: restarted
+
+    - name: restart systemd-resolved
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted
+        enabled: true
+      when:
+        - ansible_service_mgr == "systemd"
+        - "'systemd-resolved.service' in ansible_facts.services | default({})"
+
+  ###############################################################
+  # PRE_TASKS: System update (runs before all tasks)
+  ###############################################################
+  pre_tasks:
+
+    - name: Update all packages (Debian family)
+      apt:
+        upgrade: dist
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Update all packages (RedHat/Fedora)
+      dnf:
+        name: "*"
+        state: latest
+        update_cache: true
+      when: ansible_os_family == "RedHat"
+
+  ###############################################################
+  # TASKS
+  ###############################################################
+  tasks:
+
+    ##-----------------------------------------------------------
+    ## BLOCK: Ansible user setup
+    ##-----------------------------------------------------------
+    - name: Create ansible user
+      tags: user, always
+      ansible.builtin.user:
+        name: ansible
+        group: root
+        shell: /bin/bash
+        password: "{{ 'paul1' | password_hash('sha512') }}"
+
+    - name: Ensure .ssh directory exists for ansible user
+      tags: user, ssh
+      file:
+        path: /home/ansible/.ssh
+        state: directory
+        owner: ansible
+        group: root
+        mode: '0700'
+
+    - name: Add SSH key for ansible user
+      tags: user, ssh, always
+      ansible.posix.authorized_key:
+        user: ansible
+        key: "{{ ansible_ssh_public_key }}"
+        state: present
+
+    ##-----------------------------------------------------------
+    ## BLOCK: SSH hardening
+    ##-----------------------------------------------------------
+    - name: Ensure OpenSSH server is installed
+      tags: ssh
+      package:
+        name: openssh-server
+        state: present
+
+    - name: Backup existing sshd_config
+      tags: ssh
+      copy:
+        src: /etc/ssh/sshd_config
+        dest: /etc/ssh/sshd_config.bak
+        remote_src: true
+      when: ansible_facts['os_family'] != 'Windows'
+
+    - name: Configure sshd_config options
+      tags: ssh
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?{{ item.key }}'
+        line: '{{ item.key }} {{ item.value }}'
+        state: present
+        create: true
+        backup: true
+      loop:
+        - { key: 'PermitRootLogin',                  value: 'yes' }
+        - { key: 'PasswordAuthentication',           value: 'yes' }
+        - { key: 'PubkeyAuthentication',             value: 'yes' }
+        - { key: 'AuthorizedKeysFile',               value: '.ssh/authorized_keys' }
+        - { key: 'PermitEmptyPasswords',             value: 'no' }
+        - { key: 'ChallengeResponseAuthentication',  value: 'no' }
+        - { key: 'UsePAM',                           value: 'yes' }
+      notify: restart sshd
+
+    - name: Ensure SSH service is enabled and started
+      tags: ssh
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop: "{{ ['ssh', 'sshd'] }}"
+      # Ignore errors because only one of these exists per distro
+      ignore_errors: true
+
+    ##-----------------------------------------------------------
+    ## BLOCK: Sudo configuration
+    ##-----------------------------------------------------------
+    - name: Ensure sudo is installed
+      tags: sudo
+      package:
+        name: sudo
+        state: present
+
+    - name: Ensure /etc/sudoers.d exists
+      tags: sudo
+      file:
+        path: /etc/sudoers.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0750'
+
+    - name: Deploy sudoers file for ansible
+      tags: sudo
+      ansible.builtin.copy:
+        src: sudoer_ansible
+        dest: /etc/sudoers.d/ansible
+        owner: root
+        group: root
+        mode: '0440'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    ##-----------------------------------------------------------
+    ## BLOCK: Utility packages
+    ##-----------------------------------------------------------
+    - name: Install common utility packages
+      tags: packages, utils
+      package:
+        name: "{{ utility_packages_common }}"
+        state: present
+
+    - name: Install Debian-family utility packages
+      tags: packages, utils
+      apt:
+        name: "{{ utility_packages_debian }}"
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install RedHat-family utility packages
+      tags: packages, utils
+      dnf:
+        name: "{{ utility_packages_redhat }}"
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Enable and start qemu-guest-agent
+      tags: packages, utils
+      service:
+        name: qemu-guest-agent
+        state: started
+        enabled: true
+      # LXCs don't have qemu-guest-agent - ignore if absent
+      ignore_errors: true
+
+    ##-----------------------------------------------------------
+    ## BLOCK: Wazuh agent
+    ##-----------------------------------------------------------
+    - name: Check if wazuh-agent is installed
+      tags: wazuh
+      ansible.builtin.service_facts:
+
+    - name: Check if wazuh-manager is running (skip if this IS the Wazuh server)
+      tags: wazuh
+      set_fact:
+        is_wazuh_server: "{{ 'wazuh-manager.service' in ansible_facts.services }}"
+
+    - name: Install Wazuh agent (Debian family)
+      tags: wazuh
+      block:
+        - name: Download Wazuh agent deb
+          ansible.builtin.get_url:
+            url: "https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_{{ wazuh_version }}_amd64.deb"
+            dest: /tmp/wazuh-agent.deb
+            mode: '0644'
+
+        - name: Install Wazuh agent deb
+          ansible.builtin.apt:
+            deb: /tmp/wazuh-agent.deb
+          environment:
+            WAZUH_MANAGER: "{{ wazuh_manager_ip }}"
+            WAZUH_AGENT_NAME: "{{ inventory_hostname }}"
+      when:
+        - ansible_os_family == "Debian"
+        - not is_wazuh_server
+        - "'wazuh-agent.service' not in ansible_facts.services"
+
+    - name: Install Wazuh agent (RedHat family)
+      tags: wazuh
+      block:
+        - name: Download Wazuh agent rpm
+          ansible.builtin.get_url:
+            url: "https://packages.wazuh.com/4.x/yum/wazuh-agent-{{ wazuh_version }}.x86_64.rpm"
+            dest: /tmp/wazuh-agent.rpm
+            mode: '0644'
+
+        - name: Install Wazuh agent rpm
+          ansible.builtin.dnf:
+            name: /tmp/wazuh-agent.rpm
+            state: present
+            disable_gpg_check: true
+          environment:
+            WAZUH_MANAGER: "{{ wazuh_manager_ip }}"
+            WAZUH_AGENT_NAME: "{{ inventory_hostname }}"
+      when:
+        - ansible_os_family == "RedHat"
+        - not is_wazuh_server
+        - "'wazuh-agent.service' not in ansible_facts.services"
+
+    - name: Reload systemd after Wazuh install
+      tags: wazuh
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when: not is_wazuh_server
+
+    - name: Enable and start Wazuh agent
+      tags: wazuh
+      service:
+        name: wazuh-agent
+        state: started
+        enabled: true
+      when: not is_wazuh_server
+      # If just installed OR was already installed but not running
+
+    ##-----------------------------------------------------------
+    ## BLOCK: CheckMK agent
+    ##-----------------------------------------------------------
+    - name: Gather service facts for CheckMK check
+      tags: checkmk
+      ansible.builtin.service_facts:
+
+    - name: Install CheckMK agent (Debian family)
+      tags: checkmk
+      block:
+        - name: Download CheckMK deb agent
+          ansible.builtin.get_url:
+            url: "{{ checkmk_server }}/cmk/check_mk/agents/check-mk-agent_{{ checkmk_version }}_all.deb"
+            dest: /tmp/check-mk-agent.deb
+            mode: '0644'
+
+        - name: Install CheckMK deb agent
+          ansible.builtin.apt:
+            deb: /tmp/check-mk-agent.deb
+      when:
+        - ansible_os_family == "Debian"
+        - "'check-mk-agent.socket' not in ansible_facts.services"
+
+    - name: Install CheckMK agent (RedHat family)
+      tags: checkmk
+      block:
+        - name: Download CheckMK rpm agent
+          ansible.builtin.get_url:
+            url: "{{ checkmk_server }}/cmk/check_mk/agents/check-mk-agent-{{ checkmk_version }}.noarch.rpm"
+            dest: /tmp/check-mk-agent.rpm
+            mode: '0644'
+
+        - name: Install CheckMK rpm agent
+          ansible.builtin.dnf:
+            name: /tmp/check-mk-agent.rpm
+            state: present
+            disable_gpg_check: true
+      when:
+        - ansible_os_family == "RedHat"
+        - "'check-mk-agent.socket' not in ansible_facts.services"
+
+    - name: Enable and start CheckMK agent socket
+      tags: checkmk
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop:
+        - check-mk-agent.socket
+        - check-mk-agent-async.service
+      ignore_errors: true   # Not all distros activate both
+
+  ###############################################################
+  # POST_TASKS: Reboot check (runs after all tasks)
+  ###############################################################
+  post_tasks:
+
+    - name: Check if reboot required (Debian family)
+      tags: reboot
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_required_deb
+      when: ansible_os_family == "Debian"
+
+    - name: Check if reboot required (RedHat family)
+      tags: reboot
+      command: needs-restarting -r
+      register: reboot_required_rh
+      failed_when: false
+      changed_when: false
+      when: ansible_os_family == "RedHat"
+
+    - name: Reboot if required (Debian)
+      tags: reboot
+      reboot:
+        reboot_timeout: 300
+      when:
+        - ansible_os_family == "Debian"
+        - reboot_required_deb.stat.exists | default(false)
+
+    - name: Reboot if required (RedHat)
+      tags: reboot
+      reboot:
+        reboot_timeout: 300
+      when:
+        - ansible_os_family == "RedHat"
+        - reboot_required_rh.rc | default(0) == 1

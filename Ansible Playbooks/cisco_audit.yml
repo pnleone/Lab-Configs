@@ -1,0 +1,245 @@
+---
+###############################################################################
+# cisco_audit.yml
+# Purpose: Gather facts and audit details from Cisco IOS devices
+#
+# Output: JSON file with device info, interfaces, routing, VLANs, config
+#
+# Run examples:
+#   ansible-playbook cisco_audit.yml -i inventory/hosts.ini --ask-vault-pass
+#   ansible-playbook cisco_audit.yml -i inventory/hosts.ini -e output_file=/tmp/cisco_audit.json
+###############################################################################
+
+- name: Cisco IOS audit
+  hosts: cisco
+  gather_facts: false
+  connection: network_cli
+
+  vars:
+    output_file: "/tmp/cisco_audit.json"
+
+  pre_tasks:
+
+    - name: Check if host is reachable
+      ansible.builtin.wait_for_connection:
+        timeout: 30
+      ignore_unreachable: true
+      ignore_errors: true
+      register: reachability
+
+    - name: Skip unreachable host
+      meta: end_host
+      when: reachability is failed
+
+    - name: Get device facts
+      ios_facts:
+        gather_subset: all
+      register: device_facts
+
+  tasks:
+
+    ##########################################################################
+    # GATHER CISCO FACTS
+    ##########################################################################
+
+    - name: Gather IOS facts
+      cisco.ios.ios_facts:
+        gather_subset:
+          - hardware
+          - interfaces
+          - config
+      register: ios_facts
+
+    ##########################################################################
+    # SYSTEM INFO
+    ##########################################################################
+
+    - name: Get version details
+      cisco.ios.ios_command:
+        commands:
+          - show version
+      register: version_output
+
+    - name: Get running config
+      cisco.ios.ios_command:
+        commands:
+          - show running-config
+      register: running_config
+
+    - name: Get startup config
+      cisco.ios.ios_command:
+        commands:
+          - show startup-config
+      register: startup_config
+
+    - name: Get memory statistics
+      cisco.ios.ios_command:
+        commands:
+          - show memory statistics
+      register: memory_stats
+
+    - name: Get processes CPU
+      cisco.ios.ios_command:
+        commands:
+          - show processes cpu sorted
+      register: cpu_stats
+
+    ##########################################################################
+    # INTERFACES
+    ##########################################################################
+
+    - name: Get interface status
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+      register: interface_brief
+
+    - name: Get interface statistics
+      cisco.ios.ios_command:
+        commands:
+          - show interfaces
+      register: interface_stats
+
+    ##########################################################################
+    # ROUTING
+    ##########################################################################
+
+    - name: Get routing table
+      cisco.ios.ios_command:
+        commands:
+          - show ip route
+      register: routing_table
+
+    - name: Get OSPF neighbors (if applicable)
+      cisco.ios.ios_command:
+        commands:
+          - show ip ospf neighbor
+      register: ospf_neighbors
+      ignore_errors: true
+
+    - name: Get BGP summary (if applicable)
+      cisco.ios.ios_command:
+        commands:
+          - show ip bgp summary
+      register: bgp_summary
+      ignore_errors: true
+
+    ##########################################################################
+    # VLANs (switches only)
+    ##########################################################################
+
+    - name: Get VLAN database
+      cisco.ios.ios_command:
+        commands:
+          - show vlan brief
+      register: vlan_info
+      ignore_errors: true
+
+    - name: Get spanning tree
+      cisco.ios.ios_command:
+        commands:
+          - show spanning-tree summary
+      register: stp_info
+      ignore_errors: true
+
+    ##########################################################################
+    # SECURITY
+    ##########################################################################
+
+    - name: Get users
+      cisco.ios.ios_command:
+        commands:
+          - show running-config | include username
+      register: users_config
+
+    - name: Get access lists
+      cisco.ios.ios_command:
+        commands:
+          - show access-lists
+      register: access_lists
+
+    - name: Get logging configuration
+      cisco.ios.ios_command:
+        commands:
+          - show logging
+      register: logging_config
+
+    ##########################################################################
+    # BUILD STRUCTURED DATA
+    ##########################################################################
+
+    - name: Build audit data structure
+      set_fact:
+        audit_data:
+          hostname: "{{ ansible_net_hostname }}"
+          model: "{{ ansible_net_model }}"
+          serial_number: "{{ ansible_net_serialnum }}"
+          ios_version: "{{ ansible_net_version }}"
+          image: "{{ ansible_net_image }}"
+          uptime: "{{ ansible_net_system }}"
+          hardware:
+            total_memory: "{{ ansible_net_memtotal_mb }} MB"
+            free_memory: "{{ ansible_net_memfree_mb }} MB"
+          interfaces: "{{ ansible_net_interfaces }}"
+          system_info:
+            version_output: "{{ version_output.stdout[0] }}"
+            memory_stats: "{{ memory_stats.stdout[0] }}"
+            cpu_stats: "{{ cpu_stats.stdout[0] }}"
+          networking:
+            interface_brief: "{{ interface_brief.stdout[0] }}"
+            routing_table: "{{ routing_table.stdout[0] }}"
+            ospf_neighbors: "{{ ospf_neighbors.stdout[0] if ospf_neighbors is success else 'Not configured' }}"
+            bgp_summary: "{{ bgp_summary.stdout[0] if bgp_summary is success else 'Not configured' }}"
+          switching:
+            vlans: "{{ vlan_info.stdout[0] if vlan_info is success else 'Not a switch' }}"
+            spanning_tree: "{{ stp_info.stdout[0] if stp_info is success else 'Not applicable' }}"
+          security:
+            users: "{{ users_config.stdout[0] }}"
+            access_lists: "{{ access_lists.stdout[0] }}"
+            logging: "{{ logging_config.stdout[0] }}"
+          config_comparison:
+            running_lines: "{{ running_config.stdout[0].split('\n') | length }}"
+            startup_lines: "{{ startup_config.stdout[0].split('\n') | length }}"
+            configs_match: "{{ running_config.stdout[0] == startup_config.stdout[0] }}"
+          audit_timestamp: "{{ ansible_date_time.iso8601 }}"
+
+    ##########################################################################
+    # WRITE JSON OUTPUT
+    ##########################################################################
+
+    - name: Initialize audit results list
+      set_fact:
+        audit_results: []
+      run_once: true
+      delegate_to: localhost
+
+    - name: Append this host's audit data
+      set_fact:
+        audit_results: "{{ audit_results + [audit_data] }}"
+      delegate_to: localhost
+      delegate_facts: true
+
+    - name: Write consolidated JSON report
+      ansible.builtin.copy:
+        content: |
+          {
+            "report_generated": "{{ ansible_date_time.iso8601 }}",
+            "total_hosts": {{ audit_results | length }},
+            "platform": "Cisco IOS",
+            "hosts": {{ audit_results | to_nice_json }}
+          }
+        dest: "{{ output_file }}"
+      delegate_to: localhost
+      run_once: true
+      become: false
+
+    - name: Display report location
+      debug:
+        msg: "Cisco audit report written to {{ output_file }}"
+      run_once: true
+
+
+
+
+
+

@@ -1,0 +1,48 @@
+#############################################
+# EXT_LANDMZ Snort Rules
+# Network: 192.168.2.0/24
+#############################################
+
+# ====== SSH / LINUX ======
+
+alert tcp 192.168.2.0/24 any -> [192.168.1.0/24,192.168.100.0/24,192.168.200.0/24] 22 \
+(msg:"DMZ: SSH Attempt from EXT_LAN to Internal Networks"; sid:930001; rev:1;)
+
+alert tcp any any -> 192.168.2.0/24 22 \
+(msg:"DMZ: SSH Brute Force Attempt"; flags:S; detection_filter:track by_src, count 5, seconds 60; sid:930002; rev:2;)
+
+
+# ====== RECON / SCANNING ======
+
+alert tcp 192.168.2.0/24 any -> [192.168.1.0/24,192.168.100.0/24,192.168.200.0/24] any \
+(msg:"DMZ: EXT → Internal Port Scan"; flags:S; threshold:type both, track by_src, count 20, seconds 10; sid:930003; rev:1;)
+
+alert tcp any any -> 192.168.2.0/24 any \
+(msg:"DMZ: Nmap OS Detection Scan"; content:"|4E 4D 41 50|"; sid:930004; rev:1;)
+
+
+# ====== LATERAL MOVEMENT ======
+
+alert ip 192.168.2.0/24 any -> [10.20.0.0/24,192.168.3.0/24] any \
+(msg:"DMZ: EXT → ISO Traffic (Policy Violation)"; sid:930005; rev:1;)
+
+alert ip 192.168.2.0/24 any -> 10.10.0.0/24 any \
+(msg:"DMZ: EXT → HA Sync Traffic (Forbidden)"; sid:930006; rev:1;)
+
+
+# ====== SMB / NETBIOS ======
+
+alert tcp 192.168.2.0/24 any -> any 445 \
+(msg:"DMZ: EXT → Internal SMB Attempt"; sid:930007; rev:1;)
+
+alert udp 192.168.2.0/24 any -> any 137 \
+(msg:"DMZ: NetBIOS Query Flood"; threshold:type both, track by_src, count 20, seconds 10; sid:930008; rev:1;)
+
+
+# ====== TEST RULES ======
+
+alert icmp 192.168.2.0/24 any -> 192.168.1.254 any \
+(msg:"TEST: ICMP to pfSense VIP (DMZ)"; sid:930009; rev:1;)
+
+alert tcp 192.168.2.0/24 any -> 192.168.1.254 443 \
+(msg:"TEST: HTTPS to pfSense GUI (DMZ)"; sid:930010; rev:1;)

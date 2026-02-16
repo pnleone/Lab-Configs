@@ -1,0 +1,295 @@
+---
+###############################################################################
+# sys_audit_single_play.yml
+# Purpose: Single-play audit for all platforms
+#
+# Platforms: Linux, Windows, FreeBSD
+# Output: /tmp/audit_report.json
+###############################################################################
+
+- name: Multi-platform system audit (single play)
+  hosts: all
+  gather_facts: false
+  
+  vars:
+    output_file: "/tmp/audit_report.json"
+    all_audit_results: []
+
+  pre_tasks:
+    - name: Check if host is reachable
+      ansible.builtin.wait_for_connection:
+        timeout: 5
+      ignore_unreachable: true
+      ignore_errors: true
+      register: connection_check
+
+    - name: Gather facts only for reachable hosts
+      ansible.builtin.setup:
+      when: connection_check is success
+
+    - name: Skip unreachable host
+      ansible.builtin.meta: end_host
+      when: connection_check is failed or connection_check is unreachable
+
+  tasks:
+
+    ##########################################################################
+    # LINUX AUDIT TASKS
+    ##########################################################################
+
+    - block:
+        - name: Collect disk usage (Linux)
+          shell: df -h / | tail -n 1 | awk '{print $5}' | sed 's/%//'
+          register: disk_usage_pct
+          changed_when: false
+
+        - name: Collect memory usage (Linux)
+          shell: free | grep Mem | awk '{printf "%.0f", ($3/$2) * 100}'
+          register: mem_usage_pct
+          changed_when: false
+
+        - name: Collect uptime (Linux)
+          shell: uptime -s
+          register: uptime_since
+          changed_when: false
+
+        - name: Collect default route (Linux)
+          shell: ip r show default | head -n 1
+          register: default_route
+          changed_when: false
+
+        - name: Collect nameservers (Linux)
+          shell: grep '^nameserver' /etc/resolv.conf | awk '{print $2}' | paste -sd ","
+          register: nameservers
+          changed_when: false
+
+        - name: Collect SSH keys count (Linux)
+          shell: wc -l /home/ansible/.ssh/authorized_keys 2>/dev/null || echo "0"
+          register: ssh_keys_count
+          changed_when: false
+
+        - name: Collect listening ports (Linux)
+          shell: ss -tuln | grep LISTEN | wc -l
+          register: listening_ports_count
+          changed_when: false
+
+        - name: Collect running services (Linux)
+          shell: systemctl list-units --type=service --state=running | grep running | wc -l
+          register: services_count
+          changed_when: false
+
+        - name: Collect kernel version (Linux)
+          shell: uname -r
+          register: kernel_version
+          changed_when: false
+
+        - name: Collect package updates (Linux)
+          shell: |
+            if command -v apt &> /dev/null; then
+              apt list --upgradable 2>/dev/null | grep -c upgradable || echo "0"
+            elif command -v dnf &> /dev/null; then
+              dnf check-update -q 2>/dev/null | grep -v "^$" | wc -l || echo "0"
+            else
+              echo "0"
+            fi
+          register: updates_available
+          changed_when: false
+
+        - name: Build Linux audit data
+          set_fact:
+            host_audit_data:
+              hostname: "{{ inventory_hostname }}"
+              platform: "Linux"
+              os_family: "{{ ansible_os_family }}"
+              os_distribution: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+              ip_address: "{{ ansible_default_ipv4.address | default('N/A') }}"
+              system:
+                cpu_cores: "{{ ansible_processor_vcpus | default('N/A') }}"
+                memory_mb: "{{ ansible_memtotal_mb | default('N/A') }}"
+                disk_usage_pct: "{{ disk_usage_pct.stdout | default('N/A') }}"
+                memory_usage_pct: "{{ mem_usage_pct.stdout | default('N/A') }}"
+                uptime_since: "{{ uptime_since.stdout | default('N/A') }}"
+              network:
+                default_gateway: "{{ default_route.stdout | default('N/A') }}"
+                nameservers: "{{ nameservers.stdout | default('N/A') }}"
+              security:
+                ssh_keys_count: "{{ ssh_keys_count.stdout.split()[0] | default('0') }}"
+                listening_ports_count: "{{ listening_ports_count.stdout | default('N/A') }}"
+              software:
+                kernel_version: "{{ kernel_version.stdout | default('N/A') }}"
+                running_services_count: "{{ services_count.stdout | default('N/A') }}"
+                updates_available: "{{ updates_available.stdout | default('N/A') }}"
+              audit_timestamp: "{{ ansible_date_time.iso8601 }}"
+
+      when: ansible_os_family in ['Debian', 'RedHat', 'Suse']
+      become: true
+
+    ##########################################################################
+    # WINDOWS AUDIT TASKS
+    ##########################################################################
+
+    - block:
+        - name: Collect disk usage (Windows)
+          win_shell: |
+            $disk = Get-PSDrive C | Select-Object Used,Free
+            [math]::Round(($disk.Used / ($disk.Used + $disk.Free)) * 100, 0)
+          register: win_disk_usage
+
+        - name: Collect memory usage (Windows)
+          win_shell: |
+            $mem = Get-CimInstance Win32_OperatingSystem
+            [math]::Round((($mem.TotalVisibleMemorySize - $mem.FreePhysicalMemory) / $mem.TotalVisibleMemorySize) * 100, 0)
+          register: win_mem_usage
+
+        - name: Collect uptime (Windows)
+          win_shell: |
+            (Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToString("yyyy-MM-dd HH:mm:ss")
+          register: win_uptime
+
+        - name: Collect listening ports (Windows)
+          win_shell: |
+            (Get-NetTCPConnection -State Listen).Count
+          register: win_listening_ports
+
+        - name: Collect running services (Windows)
+          win_shell: |
+            (Get-Service | Where-Object {$_.Status -eq 'Running'}).Count
+          register: win_services_count
+
+        - name: Collect Windows Defender status (Windows)
+          win_shell: |
+            (Get-MpComputerStatus).AntivirusEnabled
+          register: win_defender_status
+          ignore_errors: true
+
+        - name: Build Windows audit data
+          set_fact:
+            host_audit_data:
+              hostname: "{{ inventory_hostname }}"
+              platform: "Windows"
+              os_family: "{{ ansible_os_family }}"
+              os_distribution: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+              ip_address: "{{ ansible_ip_addresses[0] | default('N/A') }}"
+              system:
+                cpu_cores: "{{ ansible_processor_vcpus | default('N/A') }}"
+                memory_mb: "{{ ansible_memtotal_mb | default('N/A') }}"
+                disk_usage_pct: "{{ win_disk_usage.stdout | trim }}"
+                memory_usage_pct: "{{ win_mem_usage.stdout | trim }}"
+                uptime_since: "{{ win_uptime.stdout | trim }}"
+              network:
+                default_gateway: "{{ ansible_default_ipv4.gateway | default('N/A') }}"
+                nameservers: "{{ ansible_dns_servers | join(',') | default('N/A') }}"
+              security:
+                listening_ports_count: "{{ win_listening_ports.stdout | trim }}"
+                defender_enabled: "{{ win_defender_status.stdout | trim | default('Unknown') }}"
+              software:
+                os_version: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+                running_services_count: "{{ win_services_count.stdout | trim }}"
+              audit_timestamp: "{{ ansible_date_time.iso8601 }}"
+
+      when: ansible_os_family == 'Windows'
+
+    ##########################################################################
+    # FREEBSD AUDIT TASKS
+    ##########################################################################
+
+    - block:
+        - name: Collect disk usage (FreeBSD)
+          shell: df -h / | tail -n 1 | awk '{print $5}' | sed 's/%//'
+          register: freebsd_disk_usage
+          changed_when: false
+
+        - name: Collect memory usage (FreeBSD)
+          shell: |
+            sysctl -n hw.physmem hw.usermem | awk 'NR==1{total=$1} NR==2{used=total-$1; printf "%.0f", (used/total)*100}'
+          register: freebsd_mem_usage
+          changed_when: false
+
+        - name: Collect uptime (FreeBSD)
+          shell: sysctl -n kern.boottime | awk '{print $4}' | sed 's/,//'
+          register: freebsd_uptime
+          changed_when: false
+
+        - name: Build FreeBSD audit data
+          set_fact:
+            host_audit_data:
+              hostname: "{{ inventory_hostname }}"
+              platform: "FreeBSD"
+              os_family: "{{ ansible_os_family }}"
+              os_distribution: "FreeBSD {{ ansible_distribution_version }}"
+              ip_address: "{{ ansible_default_ipv4.address | default('N/A') }}"
+              system:
+                cpu_cores: "{{ ansible_processor_vcpus | default('N/A') }}"
+                memory_mb: "{{ ansible_memtotal_mb | default('N/A') }}"
+                disk_usage_pct: "{{ freebsd_disk_usage.stdout | default('N/A') }}"
+                memory_usage_pct: "{{ freebsd_mem_usage.stdout | default('N/A') }}"
+                boot_time: "{{ freebsd_uptime.stdout | default('N/A') }}"
+              network:
+                default_gateway: "{{ ansible_default_ipv4.gateway | default('N/A') }}"
+              software:
+                kernel_version: "{{ ansible_kernel }}"
+              audit_timestamp: "{{ ansible_date_time.iso8601 }}"
+
+      when: ansible_os_family == 'FreeBSD'
+      become: true
+
+    ##########################################################################
+    # AGGREGATE RESULTS
+    ##########################################################################
+
+    - name: Debug - Show host audit data
+      debug:
+        var: host_audit_data
+      when: host_audit_data is defined
+
+    ##########################################################################
+    # WRITE JSON REPORT (runs once on localhost)
+    ##########################################################################
+
+    - name: Collect all audit data
+      set_fact:
+        collected_audit_data: "{{ groups['all'] | map('extract', hostvars, 'host_audit_data') | select('defined') | list }}"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Debug - Show collected data count
+      debug:
+        msg: "Collected {{ collected_audit_data | length }} host audit records"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Write consolidated JSON report
+      copy:
+        content: |
+          {
+            "report_generated": "{{ ansible_date_time.iso8601 }}",
+            "report_date": "{{ ansible_date_time.date }}",
+            "report_time": "{{ ansible_date_time.time }}",
+            "total_hosts": {{ collected_audit_data | length }},
+            "hosts": {{ collected_audit_data | to_nice_json }}
+          }
+        dest: "{{ output_file }}"
+      delegate_to: localhost
+      run_once: true
+      become: false
+      when: collected_audit_data | length > 0
+
+    - name: Display report summary
+      debug:
+        msg: |
+          ============================================================
+          Audit Report Generated: {{ output_file }}
+          ============================================================
+          
+          Total hosts audited: {{ collected_audit_data | length }}
+          
+          By platform:
+          - Linux: {{ collected_audit_data | selectattr('platform', 'equalto', 'Linux') | list | length }}
+          - Windows: {{ collected_audit_data | selectattr('platform', 'equalto', 'Windows') | list | length }}
+          - FreeBSD: {{ collected_audit_data | selectattr('platform', 'equalto', 'FreeBSD') | list | length }}
+          
+          Next step: Process with n8n workflow
+          ============================================================
+      run_once: true
+      delegate_to: localhost
+      when: collected_audit_data | length > 0

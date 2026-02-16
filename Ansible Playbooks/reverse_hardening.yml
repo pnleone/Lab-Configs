@@ -1,0 +1,161 @@
+---
+###############################################################################
+# reverse_hardening.yml
+# Purpose: Reverse SSH and system hardening changes
+#
+# WARNING: This playbook REDUCES security to restore connectivity.
+#          Only use temporarily to troubleshoot issues.
+#          Re-apply hardening after fixing application communication.
+#
+# What this reverses:
+#   - Re-enables password authentication (temporarily)
+#   - Removes AllowUsers restriction
+#   - Re-enables TCP forwarding
+#   - Re-enables agent forwarding
+#   - Relaxes auth timeouts
+#   - Reverses sysctl kernel parameters to defaults
+#
+# Run: ansible-playbook reverse_hardening.yml -i inventory/hosts.ini --ask-vault-pass
+#
+# After running this:
+#   1. Test application connectivity
+#   2. Identify which specific setting caused issues
+#   3. Create targeted fix
+#   4. Re-apply hardening with exceptions
+###############################################################################
+
+- name: Reverse hardening changes (temporary security reduction)
+  hosts: linux
+  become: true
+  gather_facts: true
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+        state: restarted
+
+    - name: reload sysctl
+      command: sysctl --system
+      ignore_errors: true
+
+  tasks:
+
+    ##########################################################################
+    # REVERSE SSH HARDENING
+    ##########################################################################
+
+    - name: Restore SSH settings to permissive defaults
+      tags: ssh
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?{{ item.key }}\s'
+        line: '{{ item.key }} {{ item.value }}'
+        state: present
+        backup: true
+      loop:
+        - { key: 'PermitRootLogin',              value: 'prohibit-password' }  # Root via key only
+        - { key: 'PasswordAuthentication',       value: 'yes' }                # TEMPORARY - allows password auth
+        - { key: 'PubkeyAuthentication',         value: 'yes' }
+        - { key: 'PermitEmptyPasswords',         value: 'no' }
+        - { key: 'ChallengeResponseAuthentication', value: 'no' }
+        - { key: 'UsePAM',                       value: 'yes' }
+        - { key: 'X11Forwarding',                value: 'yes' }                # Re-enable X11
+        - { key: 'AllowAgentForwarding',         value: 'yes' }                # Re-enable agent forwarding
+        - { key: 'AllowTcpForwarding',           value: 'yes' }                # Re-enable TCP forwarding
+        - { key: 'MaxAuthTries',                 value: '6' }                  # Default
+        - { key: 'LoginGraceTime',               value: '120' }                # Default (2 minutes)
+        - { key: 'ClientAliveInterval',          value: '0' }                  # Disabled
+        - { key: 'ClientAliveCountMax',          value: '3' }                  # Default
+      notify: restart sshd
+
+    - name: Remove AllowUsers restriction
+      tags: ssh
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?AllowUsers\s'
+        state: absent
+        backup: true
+      notify: restart sshd
+
+    - name: Remove SSH banner
+      tags: ssh, banner
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?Banner\s'
+        state: absent
+      notify: restart sshd
+
+    ##########################################################################
+    # REVERSE KERNEL HARDENING
+    ##########################################################################
+
+    - name: Restore default kernel parameters
+      tags: sysctl, kernel
+      ansible.posix.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        sysctl_set: true
+        state: present
+        reload: false
+      loop:
+        # Restore defaults (these are standard Linux defaults)
+        - { key: 'net.ipv4.ip_forward',                    value: '0' }      # Keep disabled unless router
+        - { key: 'net.ipv4.conf.all.accept_redirects',     value: '1' }      # Default: enabled
+        - { key: 'net.ipv6.conf.all.accept_redirects',     value: '1' }      # Default: enabled
+        - { key: 'net.ipv4.conf.all.send_redirects',       value: '1' }      # Default: enabled
+        - { key: 'net.ipv4.tcp_syncookies',                value: '1' }      # Keep SYN protection
+        - { key: 'net.ipv4.conf.all.accept_source_route',  value: '0' }      # Keep disabled (security)
+        - { key: 'net.ipv4.conf.all.log_martians',         value: '0' }      # Default: disabled
+        - { key: 'net.ipv4.icmp_echo_ignore_broadcasts',   value: '1' }      # Keep enabled (good default)
+        - { key: 'fs.suid_dumpable',                       value: '0' }      # Keep disabled (security)
+        - { key: 'kernel.kptr_restrict',                   value: '1' }      # Less restrictive
+        - { key: 'kernel.dmesg_restrict',                  value: '0' }      # Default: unrestricted
+      ignore_errors: true
+      notify: reload sysctl
+
+    ##########################################################################
+    # UNLOCK SYSTEM ACCOUNTS (if needed for services)
+    ##########################################################################
+
+    - name: Unlock www-data account (if web services need it)
+      tags: accounts
+      ansible.builtin.user:
+        name: www-data
+        password_lock: false
+      ignore_errors: true
+
+    - name: Unlock mail account (if mail services need it)
+      tags: accounts
+      ansible.builtin.user:
+        name: mail
+        password_lock: false
+      ignore_errors: true
+
+    ##########################################################################
+    # DISPLAY WARNINGS
+    ##########################################################################
+
+    - name: Display security warning
+      debug:
+        msg: |
+          ============================================================
+          WARNING: Security hardening has been REVERSED
+          ============================================================
+          
+          Changes made:
+          - Password authentication RE-ENABLED (security risk!)
+          - AllowUsers restriction REMOVED
+          - TCP/Agent forwarding RE-ENABLED
+          - Some kernel protections RELAXED
+          
+          NEXT STEPS:
+          1. Test your application connectivity now
+          2. Identify which specific setting caused the issue
+          3. Create a targeted fix (see below)
+          4. Re-apply hardening with exceptions
+          
+          DO NOT leave systems in this state long-term!
+          ============================================================
+      run_once: true
+

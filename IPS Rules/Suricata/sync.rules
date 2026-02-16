@@ -1,0 +1,34 @@
+#############################################
+# Sync (HA/Internal) Suricata Rules
+# Network: 10.10.0.0/24
+# Purpose: Protect HA Sync Network
+#############################################
+
+# ====== UNAUTHORIZED TRAFFIC ======
+
+alert ip any any -> 10.10.0.0/24 any \
+(msg:"SYNC: Unauthorized Traffic to HA Sync Network"; sid:940001; rev:1;)
+
+alert ip 10.10.0.0/24 any -> any any \
+(msg:"SYNC: Unauthorized Traffic Leaving HA Sync Network"; sid:940002; rev:1;)
+
+
+# ====== SMB / NETBIOS (Should NEVER occur) ======
+
+alert tcp any any -> 10.10.0.0/24 445 \
+(msg:"SYNC: SMB Attempt to HA Sync Network"; sid:940003; rev:1;)
+
+alert udp any any -> 10.10.0.0/24 137 \
+(msg:"SYNC: NetBIOS Attempt to HA Sync Network"; sid:940004; rev:1;)
+
+
+# ====== SSH / LINUX (Should NEVER occur) ======
+
+alert tcp any any -> 10.10.0.0/24 22 \
+(msg:"SYNC: SSH Attempt to HA Sync Network"; sid:940005; rev:1;)
+
+
+# ====== EASY TEST RULE ======
+
+alert icmp any any -> 10.10.0.1 any \
+(msg:"TEST: ICMP to HA Sync Interface"; sid:940006; rev:1;)

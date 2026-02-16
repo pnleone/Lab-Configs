@@ -1,0 +1,116 @@
+---
+- name: VMware vCenter audit
+  hosts: vcenter
+  gather_facts: yes
+  connection: local
+  
+  vars:
+    output_file: "{{ output_file | default('/tmp/vmware_audit.json') }}"
+    vcenter_hostname: "{{ inventory_hostname }}"
+    vcenter_username: "{{ vcenter_user }}"
+    vcenter_password: "{{ vcenter_pass }}"
+    validate_certs: no
+  
+  tasks:
+    - name: Gather VMware datacenter info
+      community.vmware.vmware_datacenter_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: datacenter_info
+      delegate_to: localhost
+
+    - name: Gather VMware cluster info
+      community.vmware.vmware_cluster_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: cluster_info
+      delegate_to: localhost
+
+    - name: Gather VMware host info
+      community.vmware.vmware_host_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: host_info
+      delegate_to: localhost
+
+    - name: Gather VM info
+      community.vmware.vmware_vm_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: vm_info
+      delegate_to: localhost
+
+    - name: Gather datastore info
+      community.vmware.vmware_datastore_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ validate_certs }}"
+      register: datastore_info
+      delegate_to: localhost
+
+    - name: Calculate VM statistics
+      set_fact:
+        total_vms: "{{ vm_info.virtual_machines | length }}"
+        powered_on_vms: "{{ vm_info.virtual_machines | selectattr('power_state', 'equalto', 'poweredOn') | list | length }}"
+        powered_off_vms: "{{ vm_info.virtual_machines | selectattr('power_state', 'equalto', 'poweredOff') | list | length }}"
+
+    - name: Calculate datastore statistics
+      set_fact:
+        datastore_summary: "{{ datastore_info.datastores | map(attribute='name') | list }}"
+        total_datastore_capacity_gb: "{{ (datastore_info.datastores | map(attribute='capacity') | map('int') | sum / 1024 / 1024 / 1024) | round(2) }}"
+        total_datastore_free_gb: "{{ (datastore_info.datastores | map(attribute='freeSpace') | map('int') | sum / 1024 / 1024 / 1024) | round(2) }}"
+        datastore_usage_percent: "{{ (100 - ((datastore_info.datastores | map(attribute='freeSpace') | map('int') | sum) / (datastore_info.datastores | map(attribute='capacity') | map('int') | sum) * 100)) | round(2) }}"
+
+    - name: Build audit data structure
+      set_fact:
+        audit_data:
+          vcenter_hostname: "{{ vcenter_hostname }}"
+          datacenter_count: "{{ datacenter_info.datacenter_info | length }}"
+          datacenters: "{{ datacenter_info.datacenter_info | map(attribute='name') | list }}"
+          cluster_count: "{{ cluster_info.clusters | length }}"
+          clusters: "{{ cluster_info.clusters | map(attribute='name') | list }}"
+          esxi_host_count: "{{ host_info.hosts | length }}"
+          esxi_hosts: "{{ host_info.hosts | map(attribute='name') | list }}"
+          total_vms: "{{ total_vms }}"
+          powered_on_vms: "{{ powered_on_vms }}"
+          powered_off_vms: "{{ powered_off_vms }}"
+          datastore_count: "{{ datastore_info.datastores | length }}"
+          datastore_summary: "{{ datastore_summary }}"
+          total_datastore_capacity_gb: "{{ total_datastore_capacity_gb }}"
+          total_datastore_free_gb: "{{ total_datastore_free_gb }}"
+          datastore_usage_percent: "{{ datastore_usage_percent }}"
+          audit_timestamp: "{{ ansible_date_time.iso8601 }}"
+
+    - name: Collect audit data from all vCenters
+      set_fact:
+        all_vcenter_audits: "{{ groups['vcenter'] | map('extract', hostvars, 'audit_data') | select('defined') | list }}"
+      run_once: true
+      delegate_to: localhost
+      delegate_facts: true
+
+    - name: Write consolidated JSON report
+      copy:
+        content: |
+          {
+            "report_generated": "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}",
+            "total_vcenters": {{ all_vcenter_audits | length }},
+            "platform": "VMware vSphere",
+            "vcenters": {{ all_vcenter_audits | to_nice_json }}
+          }
+        dest: "{{ output_file }}"
+      run_once: true
+      delegate_to: localhost
+
+    - name: Display report location
+      debug:
+        msg: "VMware audit report written to {{ output_file }}"
+      run_once: true

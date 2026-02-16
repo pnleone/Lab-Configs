@@ -33,21 +33,25 @@ metadata:
   name: shuffle-automation-role
   namespace: soc
 rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["create", "delete", "get", "list", "watch"]
+
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "delete", "get", "list", "watch"]
+
   - apiGroups: ["batch"]
     resources: ["jobs"]
     verbs: ["create", "delete", "get", "list", "watch"]
 
   - apiGroups: [""]
-    resources: ["pods"]
+    resources: ["services"]
+    verbs: ["create", "delete", "get", "list", "watch"]
+
+  - apiGroups: [""]
+    resources: ["namespaces"]
     verbs: ["get", "list", "watch"]
-
-  - apiGroups: [""]
-    resources: ["configmaps", "secrets"]
-    verbs: ["get"]
-
-  - apiGroups: [""]
-    resources: ["events"]
-    verbs: ["list", "watch"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -120,7 +124,7 @@ spec:
     app: shuffle-frontend
   ports:
   - name: http
-    port: 3001
+    port: 80
     targetPort: 80
   - name: https
     port: 443
@@ -174,6 +178,8 @@ spec:
           value: "true"
         - name: DOCKER_API_VERSION
           value: "1.40"
+        - name: SHUFFLE_BASE_URL
+          value: "http://192.168.200.41"  
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: false
@@ -241,11 +247,7 @@ spec:
         env:
         - name: SHUFFLE_APP_SDK_TIMEOUT
           value: "300"
-        - name: ENVIRONMENT_NAME
-          value: "Shuffle"
-        - name: ORG_ID
-          value: "Shuffle"
-        - name: BASE_URL
+        - name: SHUFFLE_BASE_URL
           value: "http://shuffle-backend:5001"
         - name: DOCKER_API_VERSION
           value: "1.40"
@@ -370,17 +372,16 @@ spec:
   - port: 9200
     targetPort: 9200
 ---
-# =========================
-# Worker Job Template
-# =========================
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: shuffle-worker-template
+  name: shuffle-worker
   namespace: soc
-  labels:
-    app: shuffle-worker
 spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shuffle-worker
   template:
     metadata:
       labels:
@@ -389,7 +390,6 @@ spec:
       serviceAccountName: shuffle-automation
       imagePullSecrets:
         - name: ghcr-secret
-      restartPolicy: Never
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -397,22 +397,23 @@ spec:
       containers:
       - name: shuffle-worker
         image: ghcr.io/shuffle/shuffle-worker:nightly
-        imagePullPolicy: Always
+        ports:
+        - containerPort: 33333
         env:
-        - name: BASE_URL
+        - name: SHUFFLE_BASE_URL
           value: "http://shuffle-backend:5001"
         - name: RUNNING_MODE
           value: "kubernetes"
         - name: IS_KUBERNETES
           value: "true"
-        - name: DOCKER_API_VERSION
-          value: "1.40"
         - name: CLEANUP
           value: "true"
         - name: SHUFFLE_LOGS_DISABLED
           value: "true"
         - name: SHUFFLE_STATS_DISABLED
           value: "true"
+        - name: DOCKER_API_VERSION
+          value: "1.40"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: false
@@ -426,3 +427,17 @@ spec:
         hostPath:
           path: /run/k3s/containerd/containerd.sock
           type: Socket
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shuffle-workers
+  namespace: soc
+spec:
+  selector:
+    app: shuffle-worker
+  ports:
+    - name: http
+      port: 33333
+      targetPort: 33333
+

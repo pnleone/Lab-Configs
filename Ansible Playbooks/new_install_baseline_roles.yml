@@ -1,0 +1,480 @@
+---
+###############################################################################
+# new_install_baseline_roles.yml
+# Purpose: Fresh install baseline using Ansible Galaxy roles
+# Supports: Debian, Ubuntu, Kali, ParrotOS, RHEL, CentOS, Fedora
+#
+# Prerequisites - install before first run:
+#   ansible-galaxy role install wazuh.wazuh_agent
+#   ansible-galaxy collection install checkmk.general
+#   ansible-galaxy collection install ansible.posix
+#
+# Run examples:
+#   ansible-playbook new_install_baseline_roles.yml -i inventory/hosts.ini --ask-vault-pass
+#   ansible-playbook new_install_baseline_roles.yml -i inventory/hosts.ini --tags wazuh
+#   ansible-playbook new_install_baseline_roles.yml -i inventory/hosts.ini --tags checkmk_upgrade
+#   ansible-playbook new_install_baseline_roles.yml -i inventory/hosts.ini --limit debian
+#   ansible-playbook new_install_baseline_roles.yml -i inventory/hosts.ini --limit lxc --skip-tags reboot
+#
+# Upgrade workflows:
+#   Wazuh upgrade  : bump wazuh_version in group_vars/all.yml, run --tags wazuh
+#   CheckMK upgrade: bump checkmk_version in group_vars/all.yml, run --tags checkmk_upgrade
+###############################################################################
+
+
+###############################################################################
+# PLAY 1: Bootstrap — user, SSH, sudo, packages
+###############################################################################
+- name: Bootstrap - user, SSH, sudo, and utility packages
+  hosts: linux                  # changed from 'all' — targets only managed Linux hosts
+  become: true
+  gather_facts: false           # disabled here; setup runs conditionally after ping check
+
+  handlers:
+    - name: restart sshd
+      service:
+        name: "{{ ssh_service }}"   # pulled from debian.yml / redhat.yml group_vars
+        state: restarted
+
+  pre_tasks:
+
+    # -------------------------------------------------------------------------
+    # Connectivity check — gracefully skip offline hosts
+    # -------------------------------------------------------------------------
+    - name: Check if host is reachable
+      tags: always
+      ansible.builtin.wait_for_connection:
+        timeout: 5
+      ignore_unreachable: true
+      ignore_errors: true
+      register: connection_check
+
+    - name: Gather facts only for reachable hosts
+      ansible.builtin.setup:
+      when: connection_check is success
+
+    - name: Skip unreachable host
+      ansible.builtin.meta: end_host
+      when: connection_check is failed or connection_check is unreachable
+
+    # -------------------------------------------------------------------------
+    # System update
+    # -------------------------------------------------------------------------
+    - name: Update all packages (Debian)
+      tags: packages, update
+      apt:
+        upgrade: dist
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Update all packages (RedHat)
+      tags: packages, update
+      dnf:
+        name: "*"
+        state: latest
+        update_cache: true
+      when: ansible_os_family == "RedHat"
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # Ansible user — passwordless sudo, key-based auth only
+    # -------------------------------------------------------------------------
+    - name: Create ansible user
+      tags: user, always
+      ansible.builtin.user:
+        name: ansible
+        shell: /bin/bash
+        password: "{{ vault_ansible_password | password_hash('sha512') }}"
+        comment: "Ansible Automation Service Account"
+
+    - name: Ensure .ssh directory exists for ansible user
+      tags: user, ssh
+      file:
+        path: /home/ansible/.ssh
+        state: directory
+        owner: ansible
+        group: ansible
+        mode: '0700'
+
+    - name: Add SSH key for ansible user
+      tags: user, ssh, always
+      ansible.posix.authorized_key:
+        user: ansible
+        key: "{{ ansible_ssh_pubkey }}"
+        state: present
+        comment: "Ansible-controller"
+
+    - name: Add officepc SSH key for ansible user
+      tags: user, ssh, always
+      ansible.posix.authorized_key:
+        user: ansible
+        key: "{{ officepc_ssh_pubkey }}"
+        state: present
+        comment: "OfficePC-admin-access"
+
+    - name: Deploy sudoers file for ansible user (passwordless)
+      tags: user, sudo
+      ansible.builtin.copy:
+        content: "ansible ALL=(ALL) NOPASSWD:ALL\n"
+        dest: /etc/sudoers.d/ansible
+        owner: root
+        group: root
+        mode: '0440'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    # -------------------------------------------------------------------------
+    # paul user — remote access only, sudo requires password. officepc ssh key
+    # -------------------------------------------------------------------------
+    - name: Create paul user
+      tags: user
+      ansible.builtin.user:
+        name: paul
+        shell: /bin/bash
+        groups: "{{ 'sudo' if ansible_os_family == 'Debian' else 'wheel' }}"
+        append: true
+        password: "{{ vault_paul_password | password_hash('sha512') }}"
+        comment: "Paul Leone - Administrator"
+        
+    - name: Ensure .ssh directory exists for paul user
+      tags: user, ssh
+      file:
+        path: /home/paul/.ssh
+        state: directory
+        owner: paul
+        group: paul
+        mode: '0700'
+
+    - name: Add SSH key for OfficePC
+      tags: user, ssh, always
+      ansible.posix.authorized_key:
+        user: paul
+        key: "{{ officepc_ssh_pubkey }}"
+        state: present
+        comment: "OfficePC-admin-access"
+
+    - name: Deploy sudoers file for paul (password required)
+      tags: user, sudo
+      ansible.builtin.copy:
+        content: "paul ALL=(ALL) ALL, !/bin/bash, !/usr/bin/bash, !/bin/sh, !/usr/bin/su, !/usr/bin/fish, !/usr/bin/zsh, !/usr/bin/ksh, !sudoedit\n"
+        dest: /etc/sudoers.d/paul
+        owner: root
+        group: root
+        mode: '0440'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    # -------------------------------------------------------------------------
+    # SSH
+    # -------------------------------------------------------------------------
+    - name: Ensure OpenSSH server is installed
+      tags: ssh
+      package:
+        name: openssh-server
+        state: present
+
+    - name: Backup existing sshd_config
+      tags: ssh
+      copy:
+        src: /etc/ssh/sshd_config
+        dest: /etc/ssh/sshd_config.bak
+        remote_src: true
+        force: false   # Only create backup once — don't overwrite with a hardened version
+
+    - name: Configure sshd_config options
+      tags: ssh
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?{{ item.key }}\s'
+        line: '{{ item.key }} {{ item.value }}'
+        state: present
+        backup: true
+      loop: "{{ sshd_config_options }}"
+      notify: restart sshd
+
+    - name: Ensure SSH service is enabled and started
+      tags: ssh
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop:
+        - ssh
+        - sshd
+      ignore_errors: true   # Only one of these exists per distro
+
+    # -------------------------------------------------------------------------
+    # Sudo
+    # -------------------------------------------------------------------------
+    - name: Ensure sudo is installed
+      tags: sudo
+      package:
+        name: sudo
+        state: present
+
+    - name: Ensure /etc/sudoers.d directory exists
+      tags: sudo
+      file:
+        path: /etc/sudoers.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0750'
+
+    # -------------------------------------------------------------------------
+    # Utility packages
+    # -------------------------------------------------------------------------
+    - name: Install common utility packages
+      tags: packages, utils
+      package:
+        name: "{{ utility_packages_common }}"
+        state: present
+
+    - name: Install Debian utility packages
+      tags: packages, utils
+      apt:
+        name: "{{ utility_packages_debian }}"
+        state: present
+        update_cache: true
+      when: ansible_os_family == "Debian"
+
+    - name: Install RedHat utility packages
+      tags: packages, utils
+      dnf:
+        name: "{{ utility_packages_redhat }}"
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Enable and start qemu-guest-agent
+      tags: packages, utils
+      service:
+        name: qemu-guest-agent
+        state: started
+        enabled: true
+      ignore_errors: true   # Not present in LXCs
+
+  post_tasks:
+
+    - name: Check if reboot required (Debian)
+      tags: reboot
+      stat:
+        path: /var/run/reboot-required
+      register: reboot_deb
+      when: ansible_os_family == "Debian"
+
+    - name: Check if reboot required (RedHat)
+      tags: reboot
+      command: needs-restarting -r
+      register: reboot_rh
+      failed_when: false
+      changed_when: false
+      when: ansible_os_family == "RedHat"
+
+    - name: Reboot if required (Debian)
+      tags: reboot
+      reboot:
+        reboot_timeout: 300
+      when:
+        - ansible_os_family == "Debian"
+        - reboot_deb.stat.exists | default(false)
+
+    - name: Reboot if required (RedHat)
+      tags: reboot
+      reboot:
+        reboot_timeout: 300
+      when:
+        - ansible_os_family == "RedHat"
+        - reboot_rh.rc | default(0) == 1
+
+
+###############################################################################
+# PLAY 2: Wazuh agent — install and upgrade via local role
+#
+# Local role: roles/wazuh-ansible (cloned from GitHub)
+# Clone:      git clone --branch v4.14.3 https://github.com/wazuh/wazuh-ansible.git roles/wazuh-ansible
+# Docs:       https://documentation.wazuh.com/current/deployment-options/deploying-with-ansible/roles/wazuh-agent.html
+#
+# Upgrade workflow:
+#   1. Bump wazuh_version in group_vars/all.yml
+#   2. Run: ansible-playbook new_install_baseline_roles.yml --tags wazuh
+#   The role detects the version mismatch and upgrades automatically.
+###############################################################################
+# - name: Deploy and upgrade Wazuh agent via local role
+#   hosts: linux
+#   become: true
+#   gather_facts: false
+#   tags: wazuh
+
+#   pre_tasks:
+
+#     - name: Check if host is reachable
+#       ansible.builtin.wait_for_connection:
+#         timeout: 5
+#       ignore_unreachable: true
+#       ignore_errors: true
+#       register: connection_check
+
+#     - name: Gather facts only for reachable hosts
+#       ansible.builtin.setup:
+#       when: connection_check is success
+
+#     - name: Skip unreachable host
+#       ansible.builtin.meta: end_host
+#       when: connection_check is failed or connection_check is unreachable
+
+#     - name: Gather service facts
+#       ansible.builtin.service_facts:
+
+#     - name: Flag this host as the Wazuh manager (skip install)
+#       set_fact:
+#         is_wazuh_manager: "{{ 'wazuh-manager.service' in ansible_facts.services }}"
+
+#     - name: Show Wazuh skip notice for manager host
+#       debug:
+#         msg: "This host is the Wazuh manager — skipping agent install."
+#       when: is_wazuh_manager | bool
+
+#   tasks:
+
+#     - name: Deploy Wazuh agent via local role
+#       include_role:
+#         name: wazuh-ansible/roles/wazuh/ansible-wazuh-agent
+#       vars:
+#         wazuh_managers:
+#           - address: "{{ wazuh_manager_ip }}"
+#             port: "{{ wazuh_manager_port }}"
+#             protocol: "{{ wazuh_manager_protocol }}"
+#         wazuh_agent_name: "{{ wazuh_agent_name }}"
+#         wazuh_agent_version: "{{ wazuh_version }}"
+#         wazuh_agent_config:
+#           repo:
+#             keyring_path: /etc/apt/keyrings/wazuh.gpg
+#             apt_key_url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+#             yum_key_url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+#       when: 
+#         - not (is_wazuh_manager | default(false) | bool)
+#         - ansible_facts is defined
+
+###############################################################################
+# PLAY 3: CheckMK agent — install and upgrade via Galaxy collection
+###############################################################################
+- name: Deploy and upgrade CheckMK agent via Galaxy collection
+  hosts: linux
+  become: true
+  gather_facts: false
+  tags: checkmk
+
+  # vars:
+  #   # Override role defaults with your CheckMK server details
+  #   checkmk_agent_server_protocol: http
+  #   checkmk_agent_host: 192.168.1.126
+  #   checkmk_agent_port: 5000
+  #   checkmk_agent_site: cmk
+  #   checkmk_agent_version: "{{ checkmk_version }}"  # From group_vars/all.yml
+  #   checkmk_agent_prep_legacy: true
+  #   checkmk_agent_host_url: "http://192.168.1.126:5000/cmk"
+
+  pre_tasks:
+
+    - name: Check if host is reachable
+      ansible.builtin.wait_for_connection:
+        timeout: 5
+      ignore_unreachable: true
+      ignore_errors: true
+      register: connection_check
+
+    - name: Gather facts only for reachable hosts
+      ansible.builtin.setup:
+      when: connection_check is success
+
+    - name: Skip unreachable host
+      ansible.builtin.meta: end_host
+      when: connection_check is failed or connection_check is unreachable
+
+#   tasks:
+
+#     - name: Gather package facts
+#       tags: checkmk_upgrade
+#       ansible.builtin.package_facts:
+#         manager: auto
+
+#     - name: Get installed CheckMK version (Debian)
+#       tags: checkmk_upgrade
+#       set_fact:
+#         checkmk_installed_version: >-
+#           {{ ansible_facts.packages.get('check-mk-agent', [{}])[0].get('version', 'none') }}
+#       when: ansible_os_family == "Debian"
+
+#     - name: Get installed CheckMK version (RedHat)
+#       tags: checkmk_upgrade
+#       set_fact:
+#         checkmk_installed_version: >-
+#           {{ ansible_facts.packages.get('check-mk-agent', [{}])[0].get('version', 'none') }}
+#       when: ansible_os_family == "RedHat"
+
+#     - name: Default installed version to 'none' if not detected
+#       tags: checkmk_upgrade
+#       set_fact:
+#         checkmk_installed_version: "none"
+#       when: checkmk_installed_version is not defined
+
+#     - name: Show version comparison
+#       tags: checkmk_upgrade
+#       debug:
+#         msg: >
+#           CheckMK: installed={{ checkmk_installed_version }},
+#           target={{ checkmk_version }},
+#           update_needed={{ not checkmk_installed_version.startswith(checkmk_version.split('-')[0]) }}
+
+#     - name: Deploy CheckMK agent via checkmk.general collection
+#       include_role:
+#         name: checkmk.general.agent
+#       vars:
+#         # Role-specific vars
+#         checkmk_agent_update: "{{ checkmk_installed_version != checkmk_version }}"
+
+    
+    # Fallback: manual install if not using checkmk.general collection
+    # Uncomment this block and comment out the include_role above if
+    - name: Download CheckMK agent (Debian)
+      ansible.builtin.get_url:
+        url: "{{ checkmk_deb_url }}"
+        dest: /tmp/check-mk-agent.deb
+        mode: '0644'
+      when: ansible_os_family == "Debian"
+
+    - name: Install CheckMK agent (Debian)
+      ansible.builtin.apt:
+        deb: /tmp/check-mk-agent.deb
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Download CheckMK agent (RedHat)
+      ansible.builtin.get_url:
+        url: "{{ checkmk_rpm_url }}"
+        dest: /tmp/check-mk-agent.rpm
+        mode: '0644'
+      when: ansible_os_family == "RedHat"
+
+    - name: Install CheckMK agent (RedHat)
+      ansible.builtin.dnf:
+        name: /tmp/check-mk-agent.rpm
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Ensure CheckMK agent services are enabled and running
+      tags: checkmk_upgrade
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop:
+        - check-mk-agent.socket
+        - check-mk-agent-async.service
+      ignore_errors: true
+
+
+
+
+
+

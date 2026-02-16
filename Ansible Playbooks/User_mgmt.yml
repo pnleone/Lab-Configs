@@ -1,97 +1,138 @@
 ---
--  name: add a new user and enable remote access via SSH
-   hosts: all
-   become: true
-   tasks:
+###############################################################################
+# user_mgmt.yml
+# Purpose: Manage user accounts and credentials across all Linux hosts
+#
+# What this playbook does:
+#   1. Sets ansible user password from vault_ansible_password in vault.yml
+#   2. Sets root password from vault_root_password in vault.yml
+#   3. Ensures the paul user exists with remote access and sudo (password required)
+#
+# Run examples:
+#   ansible-playbook user_mgmt.yml -i inventory/hosts.ini --ask-vault-pass
+#   ansible-playbook user_mgmt.yml -i inventory/hosts.ini --tags ansible_user
+#   ansible-playbook user_mgmt.yml -i inventory/hosts.ini --tags paul_user
+#   ansible-playbook user_mgmt.yml -i inventory/hosts.ini --tags root_password
+#
+# Password rotation workflow:
+#   1. Generate a 32-char token: openssl rand -base64 24
+#   2. Update vault_ansible_password in vault.yml: ansible-vault edit group_vars/vault.yml
+#   3. Run this playbook with --tags ansible_user
+#   4. Test connectivity: ansible linux -m ping -i inventory/hosts.ini --ask-vault-pass
+###############################################################################
 
-    - name: add new user
-      become: true
-      tags: always
+- name: User and credential management
+  hosts: linux
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+
+    - name: Check if host is reachable
+      ansible.builtin.wait_for_connection:
+        timeout: 5
+      ignore_unreachable: true
+      ignore_errors: true
+      register: connection_check
+
+    - name: Gather facts only for reachable hosts
+      ansible.builtin.setup:
+      when: connection_check is success
+
+    - name: Skip unreachable host
+      ansible.builtin.meta: end_host
+      when: connection_check is failed or connection_check is unreachable
+
+  tasks:
+
+    ##########################################################################
+    # ANSIBLE USER — set password from vault (manual rotation)
+    ##########################################################################
+
+    - name: Set ansible user password from vault
+      tags: ansible_user
       ansible.builtin.user:
         name: ansible
-        group: root
+        password: "{{ vault_ansible_password | password_hash('sha512') }}"
+        update_password: always
+      # Generate a 32-char token externally, update vault_ansible_password in vault.yml,
+      # then run this playbook. No automatic rotation — you control when passwords change.
+
+    ##########################################################################
+    # ROOT PASSWORD — set to complex 10-digit password from vault
+    ##########################################################################
+
+    - name: Set root password from vault
+      tags: root_password
+      ansible.builtin.user:
+        name: root
+        password: "{{ vault_root_password | password_hash('sha512') }}"
+        update_password: always
+      # vault_root_password must be set in vault.yml before running
+      # Recommended: 10+ chars, mixed case, numbers, symbols (e.g. D@ll@sc0wb0ys)
+
+    ##########################################################################
+    # PAUL USER — remote access, limited privileges, sudo with password
+    ##########################################################################
+
+    - name: Ensure paul user exists
+      tags: paul_user
+      ansible.builtin.user:
+        name: paul
         shell: /bin/bash
-        password:  "{{ 'paul1' | password_hash('sha512') }}"
+        # paul is NOT in root group — regular user with sudo access only
+        groups: "{{ 'sudo' if ansible_os_family == 'Debian' else 'wheel' }}"
+        append: true
+        password: "{{ vault_paul_password | password_hash('sha512') }}"
+        update_password: always
 
-    - name: Ensure OpenSSH server is installed
-      package:
-        name: openssh-server
-        state: present
-
-    - name: Backup existing sshd_config
-      become: true
-      copy:
-        src: /etc/ssh/sshd_config
-        dest: /etc/ssh/sshd_config.bak
-        remote_src: yes
-      when: ansible_facts['os_family'] != 'Windows'
-
-    - name: Set SSH configuration options
-      become: true
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^#?{{ item.key }}'
-        line: '{{ item.key }} {{ item.value }}'
-        state: present
-        create: yes
-        backup: yes
-      loop:
-        - { key: 'PermitRootLogin', value: 'yes' }
-        - { key: 'PasswordAuthentication', value: 'yes' }
-        - { key: 'PubkeyAuthentication', value: 'yes' }
-        - { key: 'AuthorizedKeysFile', value: '.ssh/authorized_keys' }
-        - { key: 'PermitEmptyPasswords', value: 'no' }
-        - { key: 'ChallengeResponseAuthentication', value: 'no' }
-        - { key: 'UsePAM', value: 'yes' }
-
-    - name: Ensure SSH service is enabled and restarted
-      become: true
-      service:
-        name: "{{ item  }}"
-        state: restarted
-        enabled: yes
-      loop:
-        - ssh
-        - sshd
-
-
-    - name: Ensure .ssh directory exists for ansible user
-      become: true
+    - name: Ensure .ssh directory exists for paul
+      tags: paul_user
       file:
-        path: /home/ansible/.ssh
+        path: /home/paul/.ssh
         state: directory
-        owner: ansible
-        group: root
+        owner: paul
+        group: paul
         mode: '0700'
 
-    - name: add SSH key for ansible host
-      become: true
-      tags: always
-      ansible.posix.authorized_key:
-        user: ansible
-        key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM6pV5iqOKDFRfFzNQ+OSXIPYJ1wmsywJhJOJ/wcxZQ1 root@ansible"
-        state: present
-
-    - name: Ensure sudo is installed
-      package:
-        name: sudo
-        state: present
-
-    - name: Ensure /etc/sudoers.d exists
-      become: true
-      file:
-        path: /etc/sudoers.d
-        state: directory
-        owner: root
-        group: root
-        mode: '0750'
-
-    - name: add sudoers file to ansible
-      become: true
+    - name: Deploy sudoers file for paul (sudo uses ROOT password, prefer sudo -i)
+      tags: paul_user, sudo
       ansible.builtin.copy:
-        src: sudoer_ansible
-        dest: /etc/sudoers.d/ansible
+        content: |
+          Defaults:paul rootpw
+          paul ALL=(ALL) ALL, !/usr/bin/su
+        dest: /etc/sudoers.d/paul
         owner: root
         group: root
         mode: '0440'
         validate: '/usr/sbin/visudo -cf %s'
+
+
+    - name: Lock paul out of direct root-level operations via SSH
+      tags: paul_user
+      # This is enforced by NOT adding paul to the root group
+      # and by the harden.yml playbook setting AllowUsers ansible paul
+      # which restricts SSH to only those two users
+      debug:
+        msg: >
+          paul user configured — sudo requires password.
+          Root group membership: none. Run harden.yml to enforce AllowUsers.
+
+    ##########################################################################
+    # VERIFY — confirm ansible key-based auth still works after password change
+    ##########################################################################
+
+    - name: Verify ansible SSH key is still present
+      tags: ansible_user, verify
+      ansible.posix.authorized_key:
+        user: ansible
+        key: "{{ ansible_ssh_pubkey }}"
+        state: present
+      # Password rotation should not affect key-based auth.
+      # This task is a safeguard to confirm the key is still in place.
+
+
+
+
+
+

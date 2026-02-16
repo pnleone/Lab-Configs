@@ -1,0 +1,190 @@
+---
+###############################################################################
+# windows_audit.yml
+# Purpose: Gather facts and audit details from Windows hosts
+#
+# Output: JSON file with system info, services, users, security settings
+#
+# Run examples:
+#   ansible-playbook windows_audit.yml -i inventory/hosts.ini --ask-vault-pass
+#   ansible-playbook windows_audit.yml -i inventory/hosts.ini -e output_file=/tmp/windows_audit.json
+###############################################################################
+
+- name: Windows system audit
+  hosts: windows
+  gather_facts: yes
+  
+  vars:
+    output_file: "{{ output_file | default('/tmp/windows_audit.json') }}"
+  
+  tasks:
+    - name: Check if host is reachable
+      win_ping:
+      register: ping_result
+      ignore_errors: yes
+
+    - name: Skip unreachable host
+      meta: end_host
+      when: ping_result is failed
+
+    - name: Gather Windows facts
+      ansible.windows.setup:
+      register: windows_facts
+
+    - name: Get system uptime
+      win_shell: |
+        $os = Get-CimInstance Win32_OperatingSystem
+        $uptime = (Get-Date) - $os.LastBootUpTime
+        "$($uptime.Days)d $($uptime.Hours)h $($uptime.Minutes)m"
+      register: uptime_raw
+
+    - name: Get disk usage
+      win_shell: |
+        Get-Volume | Where-Object {$_.DriveLetter} | 
+        Select-Object DriveLetter, FileSystemLabel, 
+        @{N='SizeGB';E={[math]::Round($_.Size / 1GB, 2)}},
+        @{N='FreeGB';E={[math]::Round($_.SizeRemaining / 1GB, 2)}},
+        @{N='UsedPercent';E={[math]::Round((($_.Size - $_.SizeRemaining) / $_.Size) * 100, 1)}} |
+        ConvertTo-Json -Compress
+      register: disk_raw
+
+    - name: Get installed updates count
+      win_shell: |
+        (Get-HotFix | Measure-Object).Count
+      register: updates_raw
+
+    - name: Get Windows Defender status
+      win_shell: |
+        Get-MpComputerStatus | Select-Object AntivirusEnabled, RealTimeProtectionEnabled, 
+        @{N='LastQuickScan';E={$_.QuickScanEndTime.ToString('yyyy-MM-dd HH:mm:ss')}},
+        @{N='LastFullScan';E={$_.FullScanEndTime.ToString('yyyy-MM-dd HH:mm:ss')}} |
+        ConvertTo-Json -Compress
+      register: defender_raw
+      ignore_errors: yes
+
+    - name: Get running services count
+      win_shell: |
+        (Get-Service | Where-Object {$_.Status -eq 'Running'} | Measure-Object).Count
+      register: services_raw
+
+    - name: Get top CPU processes
+      win_shell: |
+        Get-Process | Sort-Object CPU -Descending | Select-Object -First 10 Name, 
+        @{N='CPU_Seconds';E={[math]::Round($_.CPU, 2)}},
+        @{N='MemoryMB';E={[math]::Round($_.WorkingSet / 1MB, 2)}} |
+        ConvertTo-Json -Compress
+      register: processes_raw
+
+    - name: Get local users
+      win_shell: |
+        Get-LocalUser | Select-Object Name, Enabled, 
+        @{N='LastLogon';E={if ($_.LastLogon) {$_.LastLogon.ToString('yyyy-MM-dd HH:mm:ss')} else {'Never'}}} |
+        ConvertTo-Json -Compress
+      register: users_raw
+
+    - name: Get administrators group members (handle localization)
+      win_shell: |
+        # Get SID for built-in Administrators group (works across all languages)
+        $adminGroup = Get-LocalGroup | Where-Object {$_.SID -eq 'S-1-5-32-544'}
+        if ($adminGroup) {
+          Get-LocalGroupMember -SID $adminGroup.SID | 
+          Select-Object Name, PrincipalSource, ObjectClass |
+          ConvertTo-Json -Compress
+        } else {
+          '[]'
+        }
+      register: admins_raw
+      ignore_errors: yes
+
+    - name: Get firewall status
+      win_shell: |
+        Get-NetFirewallProfile | Select-Object Name, Enabled | ConvertTo-Json -Compress
+      register: firewall_raw
+
+    - name: Get listening ports
+      win_shell: |
+        Get-NetTCPConnection | Where-Object {$_.State -eq 'Listen'} | 
+        Select-Object -Unique LocalAddress, LocalPort, OwningProcess |
+        Sort-Object LocalPort | Select-Object -First 20 |
+        ConvertTo-Json -Compress
+      register: ports_raw
+
+    - name: Get network adapters
+      win_shell: |
+        Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} |
+        Select-Object Name, InterfaceDescription, Status, LinkSpeed |
+        ConvertTo-Json -Compress
+      register: adapters_raw
+
+    - name: Get IP configuration
+      win_shell: |
+        Get-NetIPAddress | Where-Object {$_.AddressFamily -eq 'IPv4' -and $_.IPAddress -notlike '127.*'} |
+        Select-Object InterfaceAlias, IPAddress, PrefixLength |
+        ConvertTo-Json -Compress
+      register: ipconfig_raw
+
+    - name: Get DNS servers
+      win_shell: |
+        Get-DnsClientServerAddress | Where-Object {$_.ServerAddresses} |
+        Select-Object InterfaceAlias, @{N='DNSServers';E={$_.ServerAddresses -join ', '}} |
+        ConvertTo-Json -Compress
+      register: dns_raw
+
+    - name: Build audit data structure
+      set_fact:
+        host_audit:
+          hostname: "{{ ansible_hostname }}"
+          fqdn: "{{ ansible_fqdn }}"
+          ip_address: "{{ ansible_ip_addresses[0] | default('N/A') }}"
+          os_family: "{{ ansible_os_family }}"
+          os_name: "{{ ansible_os_name }}"
+          os_version: "{{ ansible_distribution }}"
+          os_build: "{{ ansible_distribution_version }}"
+          architecture: "{{ ansible_architecture }}"
+          uptime: "{{ uptime_raw.stdout | trim }}"
+          disk_usage: "{{ disk_raw.stdout | from_json }}"
+          installed_updates_count: "{{ updates_raw.stdout | trim }}"
+          defender_status: "{{ (defender_raw.stdout | from_json) if defender_raw.rc == 0 else 'N/A' }}"
+          running_services_count: "{{ services_raw.stdout | trim }}"
+          top_processes: "{{ processes_raw.stdout | from_json }}"
+          local_users: "{{ users_raw.stdout | from_json }}"
+          administrators: "{{ (admins_raw.stdout | from_json) if admins_raw.rc == 0 else [] }}"
+          firewall_profiles: "{{ firewall_raw.stdout | from_json }}"
+          listening_ports: "{{ ports_raw.stdout | from_json }}"
+          network_adapters: "{{ adapters_raw.stdout | from_json }}"
+          ip_configuration: "{{ ipconfig_raw.stdout | from_json }}"
+          dns_servers: "{{ dns_raw.stdout | from_json }}"
+          total_memory_gb: "{{ (ansible_memtotal_mb / 1024) | round(2) }}"
+          processor_count: "{{ ansible_processor_count }}"
+          processor_cores: "{{ ansible_processor_cores }}"
+          audit_timestamp: "{{ ansible_date_time.iso8601 }}"
+
+    - name: Add host audit to dummy host
+      add_host:
+        name: "AUDIT_AGGREGATOR"
+        groups: audit_collector
+        audit_results: "{{ hostvars | dict2items | selectattr('key', 'in', groups['windows']) | map(attribute='value.host_audit') | select('defined') | list }}"
+      run_once: true
+      changed_when: false
+
+- name: Write consolidated report
+  hosts: AUDIT_AGGREGATOR
+  gather_facts: no
+  connection: local
+  
+  tasks:
+    - name: Write consolidated JSON report
+      copy:
+        content: |
+          {
+            "report_generated": "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}",
+            "total_hosts": {{ audit_results | length }},
+            "platform": "Windows",
+            "hosts": {{ audit_results | to_nice_json }}
+          }
+        dest: "{{ hostvars[groups['windows'][0]].output_file | default('/tmp/windows_audit.json') }}"
+      delegate_to: localhost
+
+    - name: Display report location
+      debug:
+        msg: "Windows audit report written to {{ hostvars[groups['windows'][0]].output_file | default('/tmp/windows_audit.json') }}"

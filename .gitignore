@@ -20,3 +20,5 @@ Kube Manifests/thehive-secrets.yaml
 Kube Manifests/thehive-smtp-secret
 Kube Manifests/postfix.yaml
 Kube Manifests/thehive-config.yaml
+Ansible Playbooks/audit_report.json
+Ansible Playbooks/group_vars/vault.yml

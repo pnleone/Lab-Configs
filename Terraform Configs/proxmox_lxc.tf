@@ -45,7 +45,7 @@ resource "proxmox_lxc" "testct" {
   hostname     = var.lxc_name
   target_node  = "pve"
   vmid         = var.lxc_id
-  ostemplate   = "Media4TBnvme:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"
+  ostemplate   = "Media4TBnvme:vztmpl/debian-13-standard_13.1-2_amd64.tar.zst"
   password     = var.rootpassword
   unprivileged = true
   cores        = 2

@@ -42,3 +42,9 @@ zone "dc._msdcs.home.com" {
     file "/etc/bind/db.dc._msdcs.home.com";
     allow-transfer { 192.168.1.0/24; };
 };
+
+zone "2.168.192.in-addr.arpa" {
+    type master;
+    file "/etc/bind/db.192.168.2";
+    allow-update { none; };
+};
